@@ -10,13 +10,15 @@ import { DefaultComponent } from './settings/default/default.component';
 import { NetworkComponent } from './settings/network/network.component';
 import { ExpertComponent } from './settings/expert/expert.component';
 
+import { AuthGuard } from './services/auth.guard';
+
 
 const routes: Routes = [
   { path: '', component: DashboardComponent, pathMatch: 'full' },
   { path: 'charts/day', component: DayComponent },
   { path: 'charts/month', component: MonthComponent },
   { path: 'charts/table', component: CharttableComponent },
-  { path: 'settings/measurement', component: MeasurementComponent },
+  { path: 'settings/measurement', component: MeasurementComponent, canActivate: [AuthGuard] },
   { path: 'settings/default', component: DefaultComponent },
   { path: 'settings/network', component: NetworkComponent },
   { path: 'settings/expert', component: ExpertComponent }
