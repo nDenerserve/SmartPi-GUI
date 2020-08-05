@@ -1,1 +1,22 @@
-<p>measurement works!</p>
+<div class="container">
+  <div class="row">
+    <div class="col-md-12 col-lg-6 col-xl-6">
+      <div class="card">
+        <h5 class="card-header">Frequency</h5>
+        <div class="card-body">
+          <button ion-button block type="button" (click)="readconfig()">
+            Read
+          </button>
+          <label class="el-switch">
+            <input
+              type="checkbox"
+              [checked]="isFrequencyChecked"
+              (change)="onFrequencyCheckboxChange($event)"
+            />
+            <span class="el-switch-style"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
