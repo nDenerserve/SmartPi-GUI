@@ -4,8 +4,8 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'http://192.168.178.69:8910/api'
-
+  apiUrl: 'http://10.30.0.29:8910/api',
+  grafanaUrl: 'http://10.30.0.29:3000'
 };
 
 /*

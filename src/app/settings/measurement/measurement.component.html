@@ -1,9 +1,10 @@
 <div class="container">
   <div class="row">
-    <div class="col-md-12 col-lg-6 col-xl-6">
+    <div class="col-md-12 col-lg-12 col-xl-12">
       <div class="card">
         <h5 class="card-header">Frequency</h5>
         <div class="card-body">
+          <div class="card-text">Phase 1</div>
           <button ion-button block type="button" (click)="readconfig()">
             Read
           </button>
@@ -18,5 +19,70 @@
         </div>
       </div>
     </div>
+
+    <div class="col-md-12 col-lg-6 col-xl-6">
+      <div class="card">
+        <h5 class="card-header">Phase 1</h5>
+        <div class="card-body">
+          <div class="card-text">
+            <div class="row">
+            
+            <div class="cardtiler33">
+              <label class="el-switch">
+              <input
+              type="checkbox"
+              [checked]="isCurrentPhaseChecked[0]"
+              (change)="onCurrentMeasurementCheckboxChange($event,1)"
+            />
+            <span class="el-switch-style"></span>
+          </label>
+            </div>
+            <div class="cardtiler33"></div>
+            <div class="cardtiler33">
+              <label class="el-switch">
+                <input
+                type="checkbox"
+                [checked]="isCurrentDirectionChecked[0]"
+                (change)="onCurrentDirectionCheckboxChange($event,1)"
+              />
+              <span class="el-switch-style"></span>
+            </label>
+            </div>
+            
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-12 col-lg-6 col-xl-6">
+      <div class="card">
+        <h5 class="card-header">Phase 2</h5>
+        <div class="card-body">
+          <div class="card-text">Phase 2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-12 col-lg-6 col-xl-6">
+      <div class="card">
+        <h5 class="card-header">Phase 3</h5>
+        <div class="card-body">
+          <div class="card-text">Phase 3</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-12 col-lg-6 col-xl-6">
+      <div class="card">
+        <h5 class="card-header">Neutral</h5>
+        <div class="card-body">
+          <div class="card-text">Neutral</div>
+        </div>
+      </div>
+    </div>
+
   </div>
+
+ 
 </div>
