@@ -25,7 +25,7 @@ export class AuthenticationService {
   login(username: string, pass: string) {
 
     const headers = new HttpHeaders();
-    headers.set('CoSntent-Type', 'application/json; charset=utf-8');
+    headers.set('Content-Type', 'application/json; charset=utf-8');
     return this.http.post<any>(`${environment.apiUrl}/login`, JSON.stringify({username: username, password: pass}), {headers})
       .subscribe((res: any) => {
         localStorage.setItem('access_token', res.token);

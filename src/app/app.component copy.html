@@ -1,0 +1,106 @@
+<div class="d-flex" [class.toggled]="sidebarToggled" id="wrapper">
+
+    <!-- Sidebar -->
+    <div class="bg-light border-right" id="sidebar-wrapper">
+        <div class="sidebar-heading">
+            <figure>
+                <div>
+                    <img class="sidebar-logo" src="/assets/logo/enerserve.svg" type="image/svg+xml">
+                </div>
+            </figure>
+        </div>
+        <div class="list-group list-group-flush">
+            <a href="/" class="list-group-item list-group-item-action bg-light">Dashboard</a>
+
+            <a href="#chartSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle list-group-item list-group-item-action bg-light">Charts</a>
+            <ul class="collapse list-unstyled" id="chartSubmenu">
+                <li>
+                    <a href="charts/day" class="list-group-item list-group-item-action bg-light">Day</a>
+                </li>
+                <li>
+                    <a href="charts/month" class="list-group-item list-group-item-action bg-light">Month</a>
+                </li>
+                <li>
+                    <a href="charts/table" class="list-group-item list-group-item-action bg-light">Table</a>
+                </li>
+            </ul>
+
+            <a href="#settingsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle list-group-item list-group-item-action bg-light" *ngIf="currentUser && currentUser.userrole.includes('smartpiadmin')">Settings</a>
+            <ul class="collapse list-unstyled" id="settingsSubmenu">
+                <li>
+                    <a href="settings/measurement" class="list-group-item list-group-item-action bg-light">Measurement</a>
+                </li>
+                <li>
+                    <a href="settings/default" class="list-group-item list-group-item-action bg-light">Default</a>
+                </li>
+                <li>
+                    <a href="settings/network" class="list-group-item list-group-item-action bg-light">Network</a>
+                </li>
+                <li>
+                    <a href="settings/expert" class="list-group-item list-group-item-action bg-light">Expert</a>
+                </li>
+            </ul>
+
+            <a href="{{nodelocation}}" target="_blank" class="list-group-item list-group-item-action bg-light">Node RED</a>
+            <a href="{{grafanalocation}}" target="_blank" class="list-group-item list-group-item-action bg-light">Grafana</a>
+
+        </div>
+    </div>
+    <!-- /#sidebar-wrapper -->
+
+    <!-- Page Content -->
+    <div id="page-content-wrapper">
+
+        <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+
+
+            <button (click)="onSidebarCollapseClick($event)" class="btn btn-primary" id="menu-toggle">Toggle
+              Menu</button>
+
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav ml-auto mt-2 mt-lg-0">
+
+
+                    <li class="nav-item nav-user" *ngIf="currentUser">
+                        Hello {{currentUser.username}}
+                    </li>
+
+                    <li class="nav-item" *ngIf="currentUser">
+                        <a href="#" (click)="logout()">Logout</a>
+                    </li>
+
+                    <li class="nav-item dropdown" *ngIf="!currentUser">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Login
+                      </a>
+                        <div class="dropdown-menu dropdown-menu-right  login-dropdown-menu" aria-labelledby="navbarDropdown">
+                            <form class="form-signin">
+                                <div class="dropdown-item">
+                                    <label for="inputEmail" class="sr-only">Benutzername</label>
+                                    <input #userName id="inputEmail" class="form-control" placeholder="Benutzername" required="" autofocus="">
+                                </div>
+                                <div class="dropdown-item">
+                                    <label for="inputPassword" class="sr-only">Passwort</label>
+                                    <input #password type="password" id="inputPassword" class="form-control" placeholder="Passwort" required="">
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" (click)="login(userName.value, password.value)" href=" # ">Login</a>
+                            </form>
+                        </div>
+                    </li>
+
+                </ul>
+            </div>
+        </nav>
+
+        <div class="container-fluid ">
+            <!-- <ul class="list-unstyled CTAs" *ngIf="currentUser">
+                {{currentUser.userrole}}
+            </ul> -->
+            <router-outlet></router-outlet>
+        </div>
+    </div>

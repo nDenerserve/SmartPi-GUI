@@ -1,10 +1,8 @@
-
+import { Component } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthenticationService } from '@app/services';
 import { User } from '@app/models';
-import { Component, OnInit } from '@angular/core';
-import { MediaObserver, MediaChange } from '@angular/flex-layout';
-import { Subscription } from 'rxjs';
+
 
 
 @Component({
@@ -18,42 +16,29 @@ export class AppComponent {
   networklocation = window.location.protocol + '//' + window.location.hostname + ':8080';
   grafanalocation = window.location.protocol + '//' + window.location.hostname + ':3000';
 
+  sidebarToggled = false;
+
   currentUser: User;
 
-  opened = true;
-  over = 'side';
-  expandHeight = '42px';
-  collapseHeight = '42px';
-  displayMode = 'flat';
-  // overlap = false;
 
-  watcher: Subscription;
+  title = 'smartpiGui';
 
-  constructor(mediaObserver: MediaObserver, private authenticationService: AuthenticationService) {
-    this.watcher = mediaObserver.media$.subscribe((change: MediaChange) => {
-      if (change.mqAlias === 'sm' || change.mqAlias === 'xs') {
-        this.opened = false;
-        this.over = 'over';
-      } else {
-        this.opened = true;
-        this.over = 'side';
-      }
-    });
+  constructor(private authenticationService: AuthenticationService) {
     this.authenticationService.currentUser.subscribe(x => this.currentUser = x);
   }
 
+  onSidebarCollapseClick(event) {
+    this.sidebarToggled = !this.sidebarToggled;
+  }
 
   login(userName: string, password: string) {
     this.authenticationService.login(userName, password);
+    console.log(this.currentUser);
   }
 
   logout() {
     this.currentUser = null;
     this.authenticationService.logout();
-  }
-
-  ngOnInit() {
-
   }
 
 }
