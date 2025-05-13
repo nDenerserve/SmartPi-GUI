@@ -1,6 +1,9 @@
 # SmartPi-GUI
 
-This template should help get you started developing with Vue 3 in Vite.
+Project to develop the graphical user interface of the SmartPis.
+
+The SmartPi project is available at:
+    https://github.com/nDenerserve/SmartPi
 
 ## Recommended IDE Setup
 
