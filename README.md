@@ -5,6 +5,8 @@ Graphical user interface (GUI) for the [SmartPi Project](https://github.com/nDen
 The SmartPi project is available at:
     https://github.com/nDenerserve/SmartPi
 
+![Dashboard](https://github.com/nDenerserve/SmartPi-GUI/blob/master/img/dashboard.jpg?raw=true)
+
 ## Recommended IDE Setup
 
 [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
