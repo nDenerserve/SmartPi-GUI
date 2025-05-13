@@ -6,6 +6,11 @@ The SmartPi project is available at:
     https://github.com/nDenerserve/SmartPi
 
 ![Dashboard](https://github.com/nDenerserve/SmartPi-GUI/blob/master/img/dashboard.jpg?raw=true)
+![Dayview](https://github.com/nDenerserve/SmartPi-GUI/blob/master/img/dayview.jpg?raw=true)
+![Monthview](https://github.com/nDenerserve/SmartPi-GUI/blob/master/img/monthview.jpg?raw=true)
+![Monthview](https://github.com/nDenerserve/SmartPi-GUI/blob/master/img/monthview_hour.jpg?raw=true)
+![Download](https://github.com/nDenerserve/SmartPi-GUI/blob/master/img/table_and_download.jpg?raw=true)
+![Settings](https://github.com/nDenerserve/SmartPi-GUI/blob/master/img/settings_01.jpg?raw=true)
 
 ## Recommended IDE Setup
 
