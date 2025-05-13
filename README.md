@@ -1,6 +1,6 @@
 # SmartPi-GUI
 
-Project to develop the graphical user interface of the SmartPis.
+Graphical user interface (GUI) for the [SmartPi Project](https://github.com/nDenerserve/SmartPi).
 
 The SmartPi project is available at:
     https://github.com/nDenerserve/SmartPi
