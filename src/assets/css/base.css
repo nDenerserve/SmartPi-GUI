@@ -1,0 +1,43 @@
+/* html {
+  font-size: 14px;
+} */
+
+  body {
+    background-color: #F7F6FB;
+    font-family: 'Geist', sans-serif !important;
+  }
+  
+  
+  a:not([href]):not([class]), a:not([href]):not([class]):hover {
+    color: var(--bs-link-color);
+    text-decoration: underline;
+  }
+
+  @font-face {
+      font-family: Montserrat;
+      src: url(../fonts/Montserrat-VariableFont_wght.ttf);
+  }
+  @font-face {
+      font-family: Oxanium;
+      src: url(../fonts/Oxanium-VariableFont_wght.ttf);
+  }
+  @font-face {
+      font-family: Geist;
+      src: url(../fonts/Geist-VariableFont_wght.ttf);
+  }
+  @font-face {
+    font-family: GeistMono;
+    src: url(../fonts/GeistMono-VariableFont_wght.ttf);
+  }
+  @font-face {
+    font-family: GowunDodum;
+    src: url(../fonts/GowunDodum-Regular.ttf);
+  }
+  @font-face {
+    font-family: RedHatDisplay;
+    src: url(../fonts/RedHatDisplay-VariableFont_wght.ttf);
+  }
+  @font-face {
+    font-family: RedHatDisplayItalic;
+    src: url(../fonts/RedHatDisplay-Italic-VariableFont_wght.ttf);
+  }

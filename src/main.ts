@@ -1,12 +1,41 @@
-import { enableProdMode } from '@angular/core';
-import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+// import { router } from '@/helpers';
 
-import { AppModule } from './app/app.module';
-import { environment } from './environments/environment';
+import './assets/library/bootstrap/css/bootstrap.css'
+import './assets/library/bootstrap/js/bootstrap.bundle.js'
+import './assets/css/main.css'
 
-if (environment.production) {
-  enableProdMode();
-}
+import { createApp, markRaw } from 'vue'
+import { createPinia } from 'pinia'
 
-platformBrowserDynamic().bootstrapModule(AppModule)
-  .catch(err => console.error(err));
+import App from './App.vue'
+import router from './helpers/router'
+
+import { createI18n } from "vue-i18n"
+
+import messages from "@intlify/unplugin-vue-i18n/messages";
+
+import axios from 'axios'
+
+
+const pinia = createPinia()
+pinia.use(({ store }) => {
+  store.router = markRaw(router)
+})
+
+const i18n = createI18n({
+  legacy: false,
+  globalInjection: true,
+  locale: "de",
+  fallbackLocale: "en",
+  availableLocales: ["en", "de"],
+  messages: messages,
+});
+
+const app = createApp(App)
+
+
+app.use(router)
+app.use(pinia)
+app.use(i18n)
+
+app.mount('#app')
