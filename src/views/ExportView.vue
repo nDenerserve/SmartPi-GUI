@@ -112,7 +112,7 @@ export default {
     },
     downloadCSVData() {        
         const anchor = document.createElement('a');
-        anchor.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(this.csvTableData);
+        anchor.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(this.csvData);
         anchor.target = '_blank';
         anchor.download = 'smartpi.csv';
         anchor.click();
