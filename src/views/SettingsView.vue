@@ -233,6 +233,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[1] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[1] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[1] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[1] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
                       <li><a class="dropdown-item" href="#" @click="changeCt('YHDC_SCT013',1)">{{
@@ -254,6 +255,10 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',1)">{{
+                        $t("ROGOWSKICOIL")
+                      }}</a>
+                      </li>
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
@@ -262,6 +267,12 @@ export default {
                         <span class="input-group-text" id="primary-current1">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current1"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[1]" @input="saveACChange">
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[1] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text" id="rogowski-voltage1">{{ $t("rogowskivoltage") }}</span>
+                      </div>
+                      <input type="text" class="form-control" aria-describedby="rogowski-voltage1"  v-model="smartpiACConfiguration.CTTypeRogowskiVoltage[1]" @input="saveACChange">
                     </div>
                   </div>
                 </div>
@@ -300,6 +311,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[2] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[2] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[2] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[2] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
                       <li><a class="dropdown-item" href="#" @click="changeCt('YHDC_SCT013',2)">{{
@@ -321,6 +333,10 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',2)">{{
+                        $t("ROGOWSKICOIL")
+                      }}</a>
+                      </li>
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
@@ -329,6 +345,12 @@ export default {
                         <span class="input-group-text" id="primary-current2">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current2"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[2]" @input="saveACChange">
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[2] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text" id="rogowski-voltage2">{{ $t("rogowskivoltage") }}</span>
+                      </div>
+                      <input type="text" class="form-control" aria-describedby="rogowski-voltage2"  v-model="smartpiACConfiguration.CTTypeRogowskiVoltage[2]" @input="saveACChange">
                     </div>
                   </div>
                 </div>
@@ -367,6 +389,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[3] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[3] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[3] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[3] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
                       <li><a class="dropdown-item" href="#" @click="changeCt('YHDC_SCT013',3)">{{
@@ -388,6 +411,10 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',3)">{{
+                        $t("ROGOWSKICOIL")
+                      }}</a>
+                      </li>
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
@@ -396,6 +423,12 @@ export default {
                         <span class="input-group-text" id="primary-current3">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current3"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[3]" @input="saveACChange">
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[3] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text" id="rogowski-voltage3">{{ $t("rogowskivoltage") }}</span>
+                      </div>
+                      <input type="text" class="form-control" aria-describedby="rogowski-voltage3"  v-model="smartpiACConfiguration.CTTypeRogowskiVoltage[3]" @input="saveACChange">
                     </div>
                   </div>
                 </div>
@@ -434,6 +467,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[4] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[4] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[4] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[4] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
                       <li><a class="dropdown-item" href="#" @click="changeCt('YHDC_SCT013',4)">{{
@@ -455,6 +489,10 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',4)">{{
+                        $t("ROGOWSKICOIL")
+                      }}</a>
+                      </li>
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
@@ -463,6 +501,12 @@ export default {
                         <span class="input-group-text" id="primary-current4">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current4"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[4]" @input="saveACChange">
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[4] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text" id="rogowski-voltage4">{{ $t("rogowskivoltage") }}</span>
+                      </div>
+                      <input type="text" class="form-control" aria-describedby="rogowski-voltage4"  v-model="smartpiACConfiguration.CTTypeRogowskiVoltage[4]" @input="saveACChange">
                     </div>
                   </div>
                 </div>

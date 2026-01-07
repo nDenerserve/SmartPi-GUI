@@ -59,6 +59,8 @@
     "YHDC_SCT4333QL": "YHDC SCT4333QL",
     "X/1A": "XA/1A",
     "X/5A": "XA/5A",
+    "ROGOWSKICOIL": "Rogowskispule",
+    "rogowskivoltage": "mV/kA",
     "measurephase": "Messung Phase",
     "changecurrentdirectionphase": "Stromrichtung umdrehen Phase",
     "changecurrentdirection": "Stromrichtung umdrehen",

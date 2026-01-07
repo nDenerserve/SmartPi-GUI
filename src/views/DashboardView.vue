@@ -453,7 +453,7 @@ export default {
                     <i class="icon-flash primary font-large-2 float-left"></i>
                   <!-- </div> -->
                   <div class="media-body text-right">
-                    <h3 class="text-green-d1" v-if="ptot<10000.0">{{ (ptot).toFixed(2).replace('.',',').replace(' ', '') }} W</h3>
+                    <h3 class="text-green-d1" v-if="Math.abs(ptot)<10000.0">{{ (ptot).toFixed(2).replace('.',',').replace(' ', '') }} W</h3>
                     <h3 v-else>{{ (ptot / 1000.0).toFixed(3).replace('.',',').replace(' ', '') }} kW</h3>
                     <table v-if="loaded" class="table card-table text-primary">
                       <thead>
@@ -465,7 +465,7 @@ export default {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr v-if="(power[0]<10000.0) && (power[1]<10000.0) && (power[2]<10000.0)">
+                        <tr v-if="(Math.abs(power[0])<10000.0) && (power[1]<10000.0) && (power[2]<10000.0)">
                           <th scope="row">{{ $t("power") }}</th>
                           <td class="card-text-field ">{{ (power[0]).toFixed(2).replace('.',',').replace(' ', '') }} W</td>
                           <td class="card-text-field ">{{ (power[1]).toFixed(2).replace('.',',').replace(' ', '') }} W</td>
@@ -478,7 +478,7 @@ export default {
                           <td class="card-text-field ">{{ (power[2] / 1000.0).toFixed(3).replace('.',',').replace(' ', '') }} kW</td>
                         </tr>
 
-                        <tr v-if="(energyConsumed[0]<10000.0) && (energyConsumed[1]<10000.0) && (energyConsumed[2]<10000.0)">
+                        <tr v-if="(Math.abs(energyConsumed[0])<10000.0) && (energyConsumed[1]<10000.0) && (energyConsumed[2]<10000.0)">
                           <th scope="row">{{ $t("energyconsumption") }}</th>
                           <td class="card-text-field ">{{ (energyConsumed[0]).toFixed(2).replace('.',',').replace(' ', '') }} Wh </td>
                           <td class="card-text-field ">{{ (energyConsumed[1]).toFixed(2).replace('.',',').replace(' ', '') }} Wh</td>
@@ -491,7 +491,7 @@ export default {
                           <td class="card-text-field ">{{ (energyConsumed[2] / 1000.0).toFixed(3).replace('.',',').replace(' ', '') }} kWh</td>
                         </tr>
 
-                        <tr v-if="(energyProduced[0]<10000.0) && (energyProduced[1]<10000.0) && (energyProduced[2]<10000.0)">
+                        <tr v-if="(Math.abs(energyProduced[0])<10000.0) && (energyProduced[1]<10000.0) && (energyProduced[2]<10000.0)">
                           <th scope="row">{{ $t("energyproduction") }}</th>
                           <td class="card-text-field ">{{ (energyProduced[0]).toFixed(2).replace('.',',').replace(' ', '') }} Wh </td>
                           <td class="card-text-field ">{{ (energyProduced[1]).toFixed(2).replace('.',',').replace(' ', '') }} Wh</td>
