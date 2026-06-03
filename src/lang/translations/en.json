@@ -111,5 +111,7 @@
     "integrator" : "Integrator",
     "cidrsuffix": "CIDR-Suffix",
     "minutebasedstorage": "Storage minute values",
-    "samplebasedstorage": "Storage of every sample"
+    "samplebasedstorage": "Storage of every sample",
+    "smartpicloud": "SmartPi Cloud",
+    "mqttqos": "MQTT QoS"
 }

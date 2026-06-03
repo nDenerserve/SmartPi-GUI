@@ -21,7 +21,11 @@ export default {
     networkConnections: {} as any,
     addIpLine: [] as any,
     newIpAddress: '',
-    newCIDRSuffix: 24
+    newCIDRSuffix: 24,
+    showMQTTpass: false,
+    showSmartpicloudMQTTpass: false,
+    showFTPpass: false,
+    showInfluxpassword: false
   }),
   methods: {
 
@@ -86,6 +90,11 @@ export default {
     changeMQTTbrokerscheme: function (scheme: string) {
       console.log(scheme);
       this.smartpiConfiguration.MQTTbrokerscheme = scheme;
+      this.saveChange();
+    },
+    changeSmartpicloudMQTTbrokerscheme: function (scheme: string) {
+      console.log(scheme);
+      this.smartpiConfiguration.SmartpicloudMQTTbrokerscheme = scheme;
       this.saveChange();
     },
     loadNetworkConfig: function() {
@@ -180,6 +189,7 @@ export default {
             <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">{{ $t("communication") }}</a>
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" id="mqtt-tab" data-bs-toggle="tab" data-bs-target="#mqtt" type="button" role="tab" aria-controls="mqtt" aria-selected="false">{{ $t("mqtt") }}</a></li>
+              <li><a class="dropdown-item" id="smartpicloud-tab" data-bs-toggle="tab" data-bs-target="#smartpicloud" type="button" role="tab" aria-controls="smartpicloud" aria-selected="false">{{ $t("smartpicloud") }}</a></li>
               <li><a class="dropdown-item" id="ftp-tab" data-bs-toggle="tab" data-bs-target="#ftp" type="button" role="tab" aria-controls="ftp" aria-selected="false">{{ $t("ftp") }}</a></li>
               <li><a class="dropdown-item" id="modbus-tab" data-bs-toggle="tab" data-bs-target="#modbus" type="button" role="tab" aria-controls="modbus" aria-selected="false">{{ $t("modbus") }}</a></li>
               <li><a class="dropdown-item" id="energymeter-tab" data-bs-toggle="tab" data-bs-target="#energymeter" type="button" role="tab" aria-controls="energymeter" aria-selected="false">{{ $t("energymeterprotocol") }}</a></li>
@@ -699,12 +709,16 @@ export default {
                     <input type="text" class="form-control" aria-describedby="mqtt-username" v-model="smartpiConfiguration.MQTTuser" @input="saveChange">
                   </div>
                 </div>
-                <div class="col-4">         
+                <div class="col-4">
                   <div class="input-group mb-3">
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="mqtt-password">{{ $t("password") }}</span>
                     </div>
-                    <input type="text" class="form-control" aria-describedby="mqtt-password" v-model="smartpiConfiguration.MQTTpass" @input="saveChange">
+                    <input :type="showMQTTpass ? 'text' : 'password'" class="form-control" aria-describedby="mqtt-password" v-model="smartpiConfiguration.MQTTpass" @input="saveChange">
+                    <button class="btn btn-outline-secondary" type="button" @click="showMQTTpass = !showMQTTpass" tabindex="-1">
+                      <svg v-if="!showMQTTpass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                      <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
+                    </button>
                   </div>
                 </div>
                 <div class="col-4">         
@@ -713,6 +727,95 @@ export default {
                       <span class="input-group-text" id="mqtt-topic">{{ $t("topic") }}</span>
                     </div>
                     <input type="text" class="form-control" aria-describedby="mqtt-topic" v-model="smartpiConfiguration.MQTTtopic" @input="saveChange">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
+          <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SMARTPICLOUD TAB !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
+          <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
+          <div class="tab-pane fade w-100" id="smartpicloud" role="tabpanel" aria-labelledby="smartpicloud-tab">
+            <div class="container">
+              <div class="row margint20 align-items-center">
+                <div class="col-4">
+                  <label style="font-size: 1.1rem">{{ $t("smartpicloud") }}</label>
+                </div>
+                <div class="col-4">
+                  <div class="form-check form-switch form-switch-md">
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.SmartpicloudEnabled" @change="saveChange" role="switch" id="smartpicloudEnabled">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-4">
+                  <div v-if="smartpiConfiguration" class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle btn-dropdown-grp width100p" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span v-if="smartpiConfiguration.SmartpicloudMQTTbrokerscheme === 'ssl://'">ssl://</span>
+                      <span v-else-if="smartpiConfiguration.SmartpicloudMQTTbrokerscheme === 'tcp://'">tcp://</span>
+                      <span v-else-if="smartpiConfiguration.SmartpicloudMQTTbrokerscheme === 'ws://'">ws://</span>
+                    </button>
+                    <ul class="dropdown-menu width100p">
+                      <li><a class="dropdown-item" href="#" @click="changeSmartpicloudMQTTbrokerscheme('ssl://')">ssl://</a></li>
+                      <li><a class="dropdown-item" href="#" @click="changeSmartpicloudMQTTbrokerscheme('tcp://')">tcp://</a></li>
+                      <li><a class="dropdown-item" href="#" @click="changeSmartpicloudMQTTbrokerscheme('ws://')">ws://</a></li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="smartpicloud-url">{{ $t("url") }}</span>
+                    </div>
+                    <input type="text" class="form-control" aria-describedby="smartpicloud-url" v-model="smartpiConfiguration.SmartpicloudMQTTbroker" @input="saveChange">
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="smartpicloud-port">{{ $t("port") }}</span>
+                    </div>
+                    <input type="text" class="form-control" aria-describedby="smartpicloud-port" v-model="smartpiConfiguration.SmartpicloudMQTTbrokerport" @input="saveChange">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="smartpicloud-username">{{ $t("username") }}</span>
+                    </div>
+                    <input type="text" class="form-control" aria-describedby="smartpicloud-username" v-model="smartpiConfiguration.SmartpicloudMQTTuser" @input="saveChange">
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="smartpicloud-password">{{ $t("password") }}</span>
+                    </div>
+                    <input :type="showSmartpicloudMQTTpass ? 'text' : 'password'" class="form-control" aria-describedby="smartpicloud-password" v-model="smartpiConfiguration.SmartpicloudMQTTpass" @input="saveChange">
+                    <button class="btn btn-outline-secondary" type="button" @click="showSmartpicloudMQTTpass = !showSmartpicloudMQTTpass" tabindex="-1">
+                      <svg v-if="!showSmartpicloudMQTTpass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                      <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="smartpicloud-topic">{{ $t("topic") }}</span>
+                    </div>
+                    <input type="text" class="form-control" aria-describedby="smartpicloud-topic" v-model="smartpiConfiguration.SmartpicloudMQTTtopic" readonly style="background-color: #e9ecef; color: #6c757d;">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="smartpicloud-qos">{{ $t("mqttqos") }}</span>
+                    </div>
+                    <input type="number" min="0" max="2" class="form-control" aria-describedby="smartpicloud-qos" v-model="smartpiConfiguration.SmartpicloudMQTTQoS" @input="saveChange">
                   </div>
                 </div>
               </div>
@@ -753,12 +856,16 @@ export default {
                     <input type="text" class="form-control" aria-describedby="ftp-username" v-model="smartpiConfiguration.FTPuser" @input="saveChange">
                   </div>
                 </div>
-                <div class="col-4">         
+                <div class="col-4">
                   <div class="input-group mb-3">
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="ftp-password">{{ $t("password") }}</span>
                     </div>
-                    <input type="text" class="form-control" aria-describedby="ftp-password" v-model="smartpiConfiguration.FTPpass" @input="saveChange">
+                    <input :type="showFTPpass ? 'text' : 'password'" class="form-control" aria-describedby="ftp-password" v-model="smartpiConfiguration.FTPpass" @input="saveChange">
+                    <button class="btn btn-outline-secondary" type="button" @click="showFTPpass = !showFTPpass" tabindex="-1">
+                      <svg v-if="!showFTPpass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                      <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
+                    </button>
                   </div>
                 </div>
                 <div class="col-4">         
@@ -986,12 +1093,16 @@ export default {
                     <input type="text" class="form-control" aria-describedby="influx-username" v-model="smartpiConfiguration.Influxuser" @input="saveChange">
                   </div>
                 </div>
-                <div class="col-4">         
+                <div class="col-4">
                   <div class="input-group mb-3">
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="influx-password">{{ $t("influxpassword") }}</span>
                     </div>
-                    <input type="text" class="form-control" aria-describedby="influx-password" v-model="smartpiConfiguration.Influxpassword" @input="saveChange">
+                    <input :type="showInfluxpassword ? 'text' : 'password'" class="form-control" aria-describedby="influx-password" v-model="smartpiConfiguration.Influxpassword" @input="saveChange">
+                    <button class="btn btn-outline-secondary" type="button" @click="showInfluxpassword = !showInfluxpassword" tabindex="-1">
+                      <svg v-if="!showInfluxpassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                      <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
+                    </button>
                   </div>
                 </div>
               </div>

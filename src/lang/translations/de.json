@@ -111,5 +111,7 @@
     "integrator" : "Integrator",
     "cidrsuffix": "CIDR-Suffix",
     "minutebasedstorage": "Speicherung Minutenwerte",
-    "samplebasedstorage": "Speicherung jedes Samples"
+    "samplebasedstorage": "Speicherung jedes Samples",
+    "smartpicloud": "SmartPi Cloud",
+    "mqttqos": "MQTT QoS"
   }
