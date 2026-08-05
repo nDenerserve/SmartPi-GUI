@@ -5,13 +5,13 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth';
 import { Line, Doughnut } from 'vue-chartjs';
 import { useDateFormat, useNow } from '@vueuse/core'
-import { format, formatDistance, formatRelative, subDays, subMonths, subYears, addDays, addMonths, addYears } from 'date-fns'
+import { format, formatDistance, formatRelative, subDays, subMonths, subYears, subHours, addDays, addMonths, addYears, addHours, startOfHour, endOfHour } from 'date-fns'
 // import 'chartjs-adapter-moment';
 
 import MainNavigation from '@/components/MainNavigation.vue';
 
 
-import { Chart as ChartJS, Title, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale, registerables } from 'chart.js'
+import { Chart as ChartJS, Title, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale, registerables, type ChartOptions } from 'chart.js'
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale)
 
@@ -35,79 +35,85 @@ export default {
       maintainAspectRatio: true,
       scales: {
         x: {
+          type: 'category' as const,
           title: {
             display: true,
             text: 'Time',
-          },   
+          },
         },
         // y: {
         //   title: {
         //     display: true,
         //     text: '',
-        //   },          
+        //   },
         //   ticks: {
         //     reverse: false,
-        //   },          
+        //   },
         // },
         yP: {
+          type: 'linear' as const,
           title: {
-            position: 'left',
+            position: 'left' as const,
             display: true,
             text: 'W',
             color: '#004F15',
-          },          
+          },
           ticks: {
             reverse: false,
             color: '#004F15',
-          },          
+          },
         },
         yU: {
-          position: 'right',
+          type: 'linear' as const,
+          position: 'right' as const,
           title: {
             display: true,
             text: 'V',
             color: '#013541',
-          },          
+          },
           ticks: {
             reverse: false,
             color: '#013541',
-          },          
+          },
         },
         yI: {
-          position: 'right',
+          type: 'linear' as const,
+          position: 'right' as const,
           title: {
             display: true,
             text: 'A',
             color: '#690C00',
-          },          
+          },
           ticks: {
             reverse: false,
             color: '#690C00',
-          },          
+          },
         },
         yF: {
-          position: 'left',
+          type: 'linear' as const,
+          position: 'left' as const,
           title: {
             display: true,
             text: 'Hz',
             color: '#693400',
-          },          
+          },
           ticks: {
             reverse: false,
             color: '#693400',
-          },          
+          },
         },
         yCosPhi: {
-          position: 'right',
+          type: 'linear' as const,
+          position: 'right' as const,
           title: {
             display: true,
             text: 'cosPhi',
             color: '#1B307B',
-          },          
+          },
           ticks: {
             reverse: false,
             color: '#1B307B',
-          },          
+          },
         },
       }
     }
@@ -179,7 +185,14 @@ export default {
                 let shortDate = new Intl.DateTimeFormat("de", {
                         dateStyle: "short",
                     });
-                if (this.view == "day") {
+                if (this.view == "hour") {
+
+                    shortDate = new Intl.DateTimeFormat("de", {
+                        timeStyle: "medium",
+                    });
+                    linechartlabels.push(shortDate.format(new Date(progressdata[i].datapoint[j].time)));
+
+                } else if (this.view == "day") {
 
                     if ((startdate!.getDate().valueOf() < stopdate!.getDate().valueOf()) || (startdate!.getFullYear().valueOf() < stopdate!.getFullYear().valueOf())) {
                     shortDate = new Intl.DateTimeFormat("de", {
@@ -357,7 +370,11 @@ export default {
     },      
     dateBack: async function () {
 
-      if (this.view == "day") {
+      if (this.view == "hour") {
+        this.startD = subHours(this.startD, 1);
+        this.stopD = subHours(this.stopD, 1);
+        this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+      } else if (this.view == "day") {
         this.startD = subDays(this.startD, 1);
         this.stopD = subDays(this.stopD, 1);
         this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
@@ -376,7 +393,18 @@ export default {
 
       var today = new Date();
       var tmpDate = new Date();
-      if (this.view == "day") {
+      if (this.view == "hour") {
+
+        tmpDate = addHours(this.stopD, 1);
+
+        if (tmpDate <= endOfHour(new Date())) {
+          this.startD = addHours(this.startD, 1);
+          this.stopD = addHours(this.stopD, 1);
+          this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+        } else {
+          console.log("Date is in the future");
+        }
+      } else if (this.view == "day") {
 
         today.setHours(23, 59, 59, 999);
 
@@ -420,7 +448,14 @@ export default {
 
     },
     actualDate: async function () {
-      if (this.view == "day") {
+      if (this.view == "hour") {
+
+        let date = new Date();
+        this.startD = startOfHour(date);
+        this.stopD = endOfHour(date);
+        this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+
+      } else if (this.view == "day") {
 
         this.startD = new Date();
         this.stopD = new Date();
@@ -456,7 +491,10 @@ export default {
     },
     addDate: async function () {
 
-      if (this.view == "day") {
+      if (this.view == "hour") {
+        this.startD = subHours(this.startD, 1);
+        this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+      } else if (this.view == "day") {
         this.startD = subDays(this.startD, 1);
         this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
       } else if (this.view == "month") {
@@ -474,7 +512,15 @@ export default {
 
       var tmpDate = new Date();
 
-      if (this.view == "day") {
+      if (this.view == "hour") {
+
+        tmpDate = subHours(this.stopD, 1);
+
+        if (this.startD <= tmpDate) {
+          this.startD = addHours(this.startD, 1);
+          this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+        }
+      } else if (this.view == "day") {
 
         tmpDate = subDays(this.stopD, 1);
         tmpDate.setHours(23, 59, 59, 999);
@@ -502,6 +548,11 @@ export default {
       }
 
     },
+    changeToHour: function () {
+      this.view = "hour";
+      this.aggregateview = "1s";
+      this.actualDate();
+    },
     changeToDay: function () {
       this.view = "day";
       this.aggregateview = "1h";
@@ -523,6 +574,69 @@ export default {
       this.aggregateview = aggregate;
       this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
 
+    },
+    formatDateInput: function (date: Date) {
+      return format(date, 'yyyy-MM-dd');
+    },
+    formatMonthInput: function (date: Date) {
+      return format(date, 'yyyy-MM');
+    },
+    formatDateTimeInput: function (date: Date) {
+      return format(date, "yyyy-MM-dd'T'HH:mm");
+    },
+    pickYear: function (value: string) {
+      if (!value) return;
+      const year = parseInt(value, 10);
+      if (!year) return;
+      const startdate = new Date(year, 0, 1);
+      const stopdate = new Date(year, 11, 31);
+      startdate.setHours(0, 0, 0, 1000);
+      stopdate.setHours(23, 59, 59, 999);
+      this.startD = startdate;
+      this.stopD = stopdate;
+      this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+    },
+    pickMonth: function (value: string) {
+      if (!value) return;
+      const [yearStr, monthStr] = value.split('-');
+      const startdate = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10) - 1, 1);
+      const stopdate = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10), 0);
+      startdate.setHours(0, 0, 0, 1000);
+      stopdate.setHours(23, 59, 59, 999);
+      this.startD = startdate;
+      this.stopD = stopdate;
+      this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+    },
+    pickDay: function (value: string) {
+      if (!value) return;
+      const [yearStr, monthStr, dayStr] = value.split('-');
+      const startdate = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10) - 1, parseInt(dayStr, 10));
+      const stopdate = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10) - 1, parseInt(dayStr, 10));
+      startdate.setHours(0, 0, 0, 1000);
+      stopdate.setHours(23, 59, 59, 999);
+      this.startD = startdate;
+      this.stopD = stopdate;
+      this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+    },
+    pickHourStart: function (value: string) {
+      if (!value) return;
+      const newStart = new Date(value);
+      if (newStart >= this.stopD) {
+        console.log("Start must be before end");
+        return;
+      }
+      this.startD = newStart;
+      this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
+    },
+    pickHourEnd: function (value: string) {
+      if (!value) return;
+      const newStop = new Date(value);
+      if (newStop <= this.startD) {
+        console.log("End must be after start");
+        return;
+      }
+      this.stopD = newStop;
+      this.fetchLinechartdata(this.valuelist,this.startD, this.stopD, this.aggregateview);
     }
   },
   created() {
@@ -559,11 +673,18 @@ export default {
   <main>
     <div class="container-fluid margin-container">
       <div class="d-sm-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-dark mb-0" v-if="view === 'day'">{{ $t("dayview") }}</h3>
+        <h3 class="text-dark mb-0" v-if="view === 'hour'">{{ $t("hourview") }}</h3>
+        <h3 class="text-dark mb-0" v-else-if="view === 'day'">{{ $t("dayview") }}</h3>
         <h3 class="text-dark mb-0" v-else-if="view === 'month'">{{ $t("monthview") }}</h3>
         <h3 class="text-dark mb-0" v-else-if="view === 'year'">{{ $t("yearview") }}</h3>
         <!-- <a class="btn btn-primary btn-sm d-none d-sm-inline-block" role="button" href="#"><i class="fas fa-download fa-sm text-white-50"></i>Generate Report</a> -->
+        <div class="d-flex align-items-center flex-wrap gap-2">
         <div class="btn-group" role="group">
+          <div class="dropdown" v-if="view === 'hour'">
+            <button class="btn btn-primary btn-dropdown-grp" type="button" disabled>
+              {{ $t("one_second") }}
+            </button>
+          </div>
           <div class="dropdown" v-if="view === 'day'">
             <button class="btn btn-primary dropdown-toggle btn-dropdown-grp" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <!-- <span>{{ $t("aggregate_range") }}</span> -->
@@ -631,12 +752,14 @@ export default {
           <div class="dropdown">
             <button class="btn btn-primary dropdown-toggle btn-dropdown-grp" type="button" data-bs-toggle="dropdown" aria-expanded="false">
               <!-- <span >{{ $t("chooseview") }}</span> -->
-              <span v-if="view === 'day'">{{ $t("dayview") }}</span>
+              <span v-if="view === 'hour'">{{ $t("hourview") }}</span>
+              <span v-else-if="view === 'day'">{{ $t("dayview") }}</span>
               <span v-else-if="view === 'month'">{{ $t("monthview") }}</span>
               <span v-else-if="view === 'year'">{{ $t("yearview") }}</span>
             </button>
-            
+
             <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" v-if="view != 'hour'" @click="changeToHour">{{ $t("hourview") }}</a></li>
               <li><a class="dropdown-item" href="#" v-if="view != 'day'" @click="changeToDay">{{ $t("dayview") }}</a></li>
               <li><a class="dropdown-item" href="#" v-if="view != 'month'" @click="changeToMonth">{{ $t("monthview")
               }}</a>
@@ -648,7 +771,28 @@ export default {
 
         </div>
 
+        <div class="date-picker-group">
+          <input v-if="view === 'year'" type="number" class="form-control form-control-sm d-inline-block w-auto"
+            :value="startD.getFullYear()" min="2000" :max="new Date().getFullYear()" step="1"
+            @change="pickYear(($event.target as HTMLInputElement).value)" />
+          <input v-else-if="view === 'month'" type="month" class="form-control form-control-sm d-inline-block w-auto"
+            :value="formatMonthInput(startD)" :max="formatMonthInput(new Date())"
+            @change="pickMonth(($event.target as HTMLInputElement).value)" />
+          <input v-else-if="view === 'day'" type="date" class="form-control form-control-sm d-inline-block w-auto"
+            :value="formatDateInput(startD)" :max="formatDateInput(new Date())"
+            @change="pickDay(($event.target as HTMLInputElement).value)" />
+          <template v-else-if="view === 'hour'">
+            <input type="datetime-local" class="form-control form-control-sm d-inline-block w-auto" step="60"
+              :value="formatDateTimeInput(startD)" :max="formatDateTimeInput(new Date())"
+              @change="pickHourStart(($event.target as HTMLInputElement).value)" />
+            <span class="mx-1">&ndash;</span>
+            <input type="datetime-local" class="form-control form-control-sm d-inline-block w-auto" step="60"
+              :value="formatDateTimeInput(stopD)" :max="formatDateTimeInput(new Date())"
+              @change="pickHourEnd(($event.target as HTMLInputElement).value)" />
+          </template>
+        </div>
 
+        </div>
 
       </div>
       <div class="row">

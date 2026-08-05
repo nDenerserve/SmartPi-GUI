@@ -9,7 +9,7 @@ import { format, formatDistance, formatRelative, subDays, subMonths, subYears, a
 
 import MainNavigation from '@/components/MainNavigation.vue';
 
-import { Chart as ChartJS, Title, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale, registerables } from 'chart.js'
+import { Chart as ChartJS, Title, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale, registerables, type ChartOptions } from 'chart.js'
 ChartJS.register(Title, Tooltip, Legend, ArcElement, BarElement, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale)
 
 export default {
@@ -41,26 +41,24 @@ export default {
       maintainAspectRatio: false,
       scales: {
         x: {
+          type: 'category' as const,
           title: {
             display: true,
             text: 'Time',
-          },   
+          },
           stacked: true,
           categoryPercentage: 0.5,
           barPercentage: 1,
           // labels: ['VueJs', 'EmberJs', 'ReactJs', 'AngularJs', 'VueJs', 'EmberJs', 'ReactJs', 'AngularJs', 'VueJs', 'EmberJs', 'ReactJs', 'AngularJs', 'VueJs', 'EmberJs', 'ReactJs', 'AngularJs'],
         },
         y: {
+          type: 'linear' as const,
           title: {
             display: true,
             text: 'kWh',
-          },          
-          stacked: true,
-          ticks: {
-            reverse: false,
-           
           },
-          
+          stacked: true,
+          reverse: false,
         }
       },
       plugins: {

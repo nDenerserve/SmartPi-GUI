@@ -1,10 +1,12 @@
 {
     "dashboard": "Dashboard",
+    "hourview": "Hourview",
     "dayview": "Dayview",
     "monthview": "Monthview",
     "yearview": "Yearview",
     "chooseview": "Choose view",
     "aggregate_range": "Range",
+    "one_second": "1 second",
     "one_minute": "1 minute",
     "five_minutes": "5 minutes",
     "fifteen_minutes": "15 minutes",
