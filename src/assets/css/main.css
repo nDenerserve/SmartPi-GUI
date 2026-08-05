@@ -536,8 +536,32 @@ a,
   .btn-dropdown-grp {
     width: 190px;
   }
- 
-  
+
+  .date-picker-input {
+    color-scheme: dark;
+    width: auto;
+    -webkit-user-select: auto;
+    -moz-user-select: auto;
+    user-select: auto;
+  }
+
+  .timepicker-menu {
+    min-width: 160px;
+  }
+
+  .monthpicker-menu {
+    min-width: 230px;
+  }
+
+  .monthpicker-menu .year-select {
+    min-width: 90px;
+  }
+
+  .monthpicker-menu .month-select {
+    min-width: 130px;
+  }
+
+
   .bs-icon {
     --bs-icon-size: .75rem;
     display: flex;

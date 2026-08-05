@@ -1,3 +1,4 @@
+<!-- Leftover icon from the default "create-vue" scaffold template; not referenced anywhere in the SmartPi app. -->
 <template>
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor">
     <path

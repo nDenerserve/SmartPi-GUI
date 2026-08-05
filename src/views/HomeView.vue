@@ -26,7 +26,7 @@
       //   return;
       // }
 
-      // onMounted(async () => { 
+      // onMounted(async () => {
       //   console.log("OnMOunted")
       //   const {data} = await api.get('/dashboard');
 
@@ -34,6 +34,9 @@
 
       //   jsonData.value = data.branches;
       // });
+      // The "/" route has no content of its own - it just forwards straight
+      // to the dashboard (see helpers/router.ts for how login is - or isn't -
+      // enforced from there).
       router.push('/dashboard');
       return {
         jsonData

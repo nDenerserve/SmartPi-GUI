@@ -1,10 +1,18 @@
+<!--
+  This component mixes `<script setup>` (for the reactive, template-facing
+  auth state and the sibling-app links below) with a separate Options API
+  `<script>` block (for the sidebar toggle method) - both compile into the
+  same component, this is just how the file happened to evolve.
+-->
 <script setup lang="ts">
 import { useAuthStore } from '../stores/auth';
-import { loadScript } from "vue-plugin-load-script";
-
+import { loadScript } from "vue-plugin-load-script"; // currently unused in this file
 
 const authStore = useAuthStore();
 
+// Links to the other services that run alongside the SmartPi GUI on the
+// same device, each on its own port. Built from window.location.hostname
+// so they work regardless of which device/IP the GUI itself is served from.
 const noderedLocation = 'http://' + window.location.hostname + ':1880';
 const grafanaLocation = 'http://' + window.location.hostname + ':3000';
 const influxdbLocation = 'http://' + window.location.hostname + ':8086';
@@ -18,6 +26,9 @@ const shellinaboxLocation = 'https://' + window.location.hostname + ':4200';
 export default {
     name: "MainNavigation",
     methods: {
+        // Toggles the collapsed/expanded state of the sidebar (mobile/narrow
+        // layouts): shows the nav panel, swaps the hamburger icon for a
+        // close (x) icon, and shifts the page body/header to make room.
         toggleSidemenu() {
             console.log("TOGGLE");
             const toggle = document.getElementById('header-toggle');
@@ -62,7 +73,11 @@ export default {
 
                     <!-- <template v-if="authStore.token"> -->
 
-                        <template v-if="authStore.token">                        
+                        <!-- Both branches below render the same nav-link list; the only
+                             difference is the extra "Logout" link when logged in. Routes
+                             like /dashboard aren't actually protected by hiding their link
+                             here - see helpers/router.ts for how auth is enforced instead. -->
+                        <template v-if="authStore.token">
                             <div class="l-nav_list">
                                 <a class="l-nav_link" href="/dashboard"><i class="icon-dashboard"></i><span class="l-nav_name">Dashboard</span></a>
                                 <a class="l-nav_link" href="/energychart"><i class="icon-barchart"></i><span class="l-nav_name">Dashboard</span></a>

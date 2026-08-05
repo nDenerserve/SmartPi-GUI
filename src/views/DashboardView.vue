@@ -12,6 +12,10 @@ import MainNavigation from '@/components/MainNavigation.vue';
 import { Chart as ChartJS, Title, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale, registerables, type ChartOptions } from 'chart.js'
 ChartJS.register(Title, Tooltip, Legend, ArcElement, BarElement, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale)
 
+// Landing page after login: live per-phase readings (power/current/voltage/
+// energy/cosPhi/frequency), device info, and two bar charts (today, this
+// month) built from the same energy-barchart endpoint used by
+// EnergychartView.vue.
 export default {
   name: 'DashboardView',
   components: { MainNavigation, Bar },
@@ -70,8 +74,13 @@ export default {
 
   }),
   methods: {
+    // Initial fetch of the live-value cards, called once from created().
+    // Sets `loaded = false` while in flight so the cards' <table> (which
+    // reads array indices like power[0]) doesn't render against stale/absent
+    // data; see updateLivevalues() below for the near-identical polling
+    // version that skips this loading flag.
     loadLivevalues: async function () {
-      
+
       this.loaded = false;
       var ptot = 0.0;
       var itot = 0.0;
@@ -89,6 +98,10 @@ export default {
 
         console.log(data);
 
+        // The live-data endpoint returns one "phase" per array index (L1/L2/L3,
+        // plus a 4th synthetic "total" entry for current), each holding a list
+        // of typed readings; flatten that into one parallel array per reading
+        // type (power[i], voltage[i], ...) so the template can index by phase.
         for (let i = 0; i < data.datasets[0].phases.length; i++) {
           for (let j = 0; j < data.datasets[0].phases[i].values.length; j++) {
             if (data.datasets[0].phases[i].values[j].type == "power") {
@@ -100,9 +113,12 @@ export default {
               if (i < 3) {
                 current[i] = data.datasets[0].phases[i].values[j].data
               } else if ((i==3) && (data.datasets[0].phases[i].values[j].data > 0.0)) {
+                // Index 3 is the neutral/N conductor current, which is only
+                // present on some installations - only record it if the
+                // device actually reported a (positive) reading for it.
                 current[i] = data.datasets[0].phases[i].values[j].data
-              }   
-              itot = itot + data.datasets[0].phases[i].values[j].data          
+              }
+              itot = itot + data.datasets[0].phases[i].values[j].data
             } else if (data.datasets[0].phases[i].values[j].type == "energyproduced") {
               energyProduced[i] = data.datasets[0].phases[i].values[j].data
             } else if (data.datasets[0].phases[i].values[j].type == "energyconsumed") {
@@ -113,8 +129,8 @@ export default {
               cosPhi[i] = data.datasets[0].phases[i].values[j].data
             } else if (data.datasets[0].phases[i].values[j].type == "frequency") {
               frequency[i] = data.datasets[0].phases[i].values[j].data
-            }            
-          }          
+            }
+          }
         }
 
 
@@ -136,6 +152,9 @@ export default {
         console.error(e)
       }
     },
+    // Polling version of loadLivevalues(), invoked every 3s from created().
+    // Deliberately does *not* touch `this.loaded`, so the cards keep showing
+    // their previous values (no flicker/blank state) between refreshes.
     updateLivevalues: async function () {
 
       var ptot = 0.0;
@@ -199,9 +218,15 @@ export default {
         console.error(e)
       }
     },
+    // Unused/unimplemented stub.
     getMonthdata() {
 
     },
+    // Shared fetch for both bar charts on this page. `view` ("day" or
+    // "month") picks which loading flag and which result field
+    // (dayBarChartData/monthBarChartData) get updated once the request
+    // resolves, so the two charts can be loaded independently/in parallel
+    // via two separate calls (see created() below) without racing each other.
     fetchBarchartdata: async function (view: string, startdate?: Date, stopdate?: Date, aggregate?: string) {
 
       if (view == "day") {
@@ -265,6 +290,10 @@ export default {
                     aggregate = "1d"
                   }
 
+            // Build the chart's x-axis labels once, from the first dataset
+            // only (i == 0) - every dataset shares the same set of
+            // timestamps, so doing this for every dataset would just
+            // recompute (and re-push, duplicating) the same labels.
             for (let j = 0; j < energydata[i].datapoint.length; j++) {
               if (i == 0) {
                 let shortDate = new Intl.DateTimeFormat("de", {
@@ -302,11 +331,15 @@ export default {
 
                   
                 } else if (view == "year") {
+                  // Dead branch: fetchBarchartdata() on this page is only
+                  // ever called with view "day" or "month" (see created()
+                  // below); this "year" case was copied over from
+                  // EnergychartView.vue, which does support a year view.
 
                   let shortDate = new Intl.DateTimeFormat("de", {
                       dateStyle: "short",
                     });
-                  
+
                   if (aggregate == "1mo") {
                     const format = new Intl.DateTimeFormat("de", {month: "short", year: "numeric"}).format;
 
@@ -320,6 +353,10 @@ export default {
                 
               }
 
+              // Convert Wh to kWh, and plot "Ep*" (energy produced) fields as
+              // negative values so production bars point the opposite
+              // direction from "Ec*" (energy consumed) bars on the stacked
+              // chart, visually separating the two above/below the axis.
               if (energydata[i].field.includes('Ep')) {
                 barData.push((energydata[i].datapoint[j].value/1000.0) * -1);
               } else {
@@ -327,6 +364,9 @@ export default {
               }
             }
 
+            // Field-name -> bar color. Ep* (produced) get yellow/orange
+            // shades, Ec* (consumed) get blue shades, anything else falls
+            // back to red so it's obviously not one of the expected fields.
             switch (energydata[i].field) {
               case 'Ep1': {
                 barColor = '#E2AE12';
@@ -396,12 +436,21 @@ export default {
   },
   created() {
 
+    // Load the live-value cards once immediately, then keep them fresh with
+    // a 3s poll for as long as this view stays mounted. Note: this interval
+    // is never cleared (no matching `onUnmounted`/`beforeUnmount`), so it
+    // keeps running (and calling the API) even after navigating away, until
+    // a full page reload.
     this.loadLivevalues();
 
     setInterval(async () => {
       this.updateLivevalues();
     }, 3000);
 
+    // Load both bar charts (this month, today) up front with fixed default
+    // aggregates; the user can't change range/aggregate on this page
+    // (unlike EnergychartView.vue, which exposes the same endpoint with
+    // full range/aggregate controls).
     this.fetchBarchartdata("month",undefined,undefined,"1d");
     this.fetchBarchartdata("day",undefined,undefined,"1h");
   },
@@ -417,7 +466,9 @@ export default {
 
     // var loadCounter = 0;
 
-    // Redirect to login page if user is not logged in
+    // Redirect to login page if user is not logged in - currently disabled;
+    // this page does not enforce a login requirement on its own (see the
+    // note in helpers/router.ts).
     // if (!authStore.token) {
     //   authStore.logout();
     //   return;
@@ -451,6 +502,13 @@ export default {
                     <i class="icon-flash primary font-large-2 float-left"></i>
                   <!-- </div> -->
                   <div class="media-body text-right">
+                    <!-- Repeated pattern throughout this template: below 10000
+                         (W/A/...), show the raw value with 2 decimals; at or
+                         above it, switch to the "k"-prefixed unit with 3
+                         decimals instead. `.replace('.', ',')` then converts
+                         `toFixed`'s decimal point into a German-style decimal
+                         comma. The trailing `.replace(' ', '')` is a no-op -
+                         `toFixed` never produces a space - and can be ignored. -->
                     <h3 class="text-green-d1" v-if="Math.abs(ptot)<10000.0">{{ (ptot).toFixed(2).replace('.',',').replace(' ', '') }} W</h3>
                     <h3 v-else>{{ (ptot / 1000.0).toFixed(3).replace('.',',').replace(' ', '') }} kW</h3>
                     <table v-if="loaded" class="table card-table text-primary">

@@ -29,6 +29,8 @@
       const authStore = useAuthStore();
       const route = useRoute();
 
+      // Already logged in (e.g. hit /login directly with a valid token
+      // still in localStorage) - skip the form entirely.
       if (authStore.token) {
         router.push('/');
       }
@@ -38,7 +40,11 @@
         username: '',
         password: '' ,
       });
-      
+
+      // Views that bounce the user here because they weren't logged in
+      // append `?redirect=<path>` (see redirectToLoginWithPath in
+      // stores/auth.ts) so login can send them back where they came from
+      // instead of always landing on the dashboard.
       let redirect;
       redirect = route.query.redirect
       if(redirect === undefined) {

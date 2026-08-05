@@ -9,6 +9,13 @@ import { format, formatDistance, formatRelative, subDays, subMonths, subYears, a
 import MainNavigation from '@/components/MainNavigation.vue';
 
 
+// Device configuration page: a tabbed form (measurements, MQTT, SmartPi
+// Cloud, FTP, Modbus, energy-meter protocol, database/InfluxDB, base
+// settings, expert settings, network) over two config objects fetched from
+// the device - `smartpiConfiguration` (general/service config) and
+// `smartpiACConfiguration` (AC measurement config). There is no explicit
+// "Save" button for most fields: every input auto-saves on change/input
+// (see saveChange/saveACChange below), so edits take effect immediately.
 export default {
   name: 'SettingsView',
   components: { MainNavigation},
@@ -16,12 +23,17 @@ export default {
   data: () => ({
     loaded: false,
     smartpiConfiguration: {} as any,
-    smartpiACConfiguration: {} as any, 
-    selected: '',    
+    smartpiACConfiguration: {} as any,
+    selected: '',
     networkConnections: {} as any,
+    // "Add IP" inline form's visibility, keyed by connection name (one
+    // network connection can have its add-form open at a time - or, since
+    // this is keyed per connection, technically several at once).
     addIpLine: [] as any,
     newIpAddress: '',
     newCIDRSuffix: 24,
+    // Password visibility toggles for the various password fields below
+    // (each field has its own show/hide eye-icon button in the template).
     showMQTTpass: false,
     showSmartpicloudMQTTpass: false,
     showFTPpass: false,
@@ -29,6 +41,7 @@ export default {
   }),
   methods: {
 
+    // Loads both config objects once on mount (see created() below).
     fetchConfigdata: async function() {
 
       Promise.all([
@@ -51,6 +64,11 @@ export default {
         });
 
     },
+    // Sends the *entire* smartpiACConfiguration object back to the device on
+    // every change (whole-object PUT-via-POST, not a per-field patch) -
+    // called from `@change`/`@input` on individual fields throughout the AC
+    // config tabs (measurements, energy meter) below, as well as from the
+    // changeFrequency/changeCt helpers.
     saveACChange: function () {
       console.log("Save ACConfig");
       console.log(this.smartpiACConfiguration);
@@ -61,8 +79,10 @@ export default {
       .catch(function (error) {
         console.log(error);
       });
-      
+
     },
+    // Same as saveACChange() above, but for smartpiConfiguration (the
+    // general/service config: MQTT, cloud, FTP, database, base settings).
     saveChange: function () {
       console.log("Save Config");
       console.log(this.smartpiConfiguration);
@@ -73,12 +93,19 @@ export default {
       .catch(function (error) {
         console.log(error);
       });
-      
+
     },
+    // The change* helpers below back the various dropdown pickers in the
+    // template (frequency, CT type, log level, MQTT scheme): update the
+    // relevant field on the in-memory config object, then immediately
+    // persist via saveChange()/saveACChange(), same auto-save pattern as
+    // the plain `@input`-bound text fields.
     changeFrequency: function (frequency: number) {
       this.smartpiACConfiguration.PowerFrequency = frequency;
       this.saveACChange();
     },
+    // `phase` is 1/2/3 for L1/L2/L3, 4 for the neutral conductor - see the
+    // "Neutral" row in the measurements tab.
     changeCt: function (cttype: string, phase) {
       this.smartpiACConfiguration.CTType[phase] = cttype;
       this.saveACChange();
@@ -97,6 +124,10 @@ export default {
       this.smartpiConfiguration.SmartpicloudMQTTbrokerscheme = scheme;
       this.saveChange();
     },
+    // Fetches the device's network connections/addresses; only called when
+    // the "Network settings" tab is opened (see its @click in the template)
+    // rather than eagerly on mount, since it's a separate, beta-labeled
+    // feature from the rest of this page.
     loadNetworkConfig: function() {
       console.log("Load Network Config");
       api.get('/config/network/listconnections')
@@ -109,9 +140,15 @@ export default {
         console.log(error);
       });
     },
+    // Unused/unimplemented stub - the template's delete/trash action calls
+    // removeIp() below instead.
     deleteAddress: function(connectionName, Ipv4Address) {
       console.log("DELETE: "+connectionName+ "   " + Ipv4Address);
     },
+    // Adds newIpAddress/newCIDRSuffix as a static address on the given
+    // connection, then replaces networkConnections with the response
+    // (the API returns the full updated connection list) and closes that
+    // connection's inline "add IP" form.
     addIp: function (connectionName) {
       console.log(connectionName);
       console.log(this.newIpAddress);
@@ -128,6 +165,9 @@ export default {
       });
       
     },
+    // Removes a static address from the given connection (only offered in
+    // the template for manually-assigned addresses when more than one
+    // remains, so a connection can't be left with no address at all).
     removeIp: function (connectionName, ipaddress, cidrsuffix) {
       console.log(connectionName);
       console.log(ipaddress);
@@ -157,6 +197,9 @@ export default {
     const authStore = useAuthStore();
     const route = useRoute();
     console.log(authStore.token);
+    // Unlike the other views (dashboard, line/energy chart, export), this
+    // is the one place in the app that actively enforces login - see the
+    // note in helpers/router.ts for why that's not handled centrally.
     if (!authStore.token) {
         authStore.redirectToLoginWithPath(route.path);
         return;
@@ -181,6 +224,11 @@ export default {
             <h3 class="text-dark mb-0" >{{ $t("settings") }}</h3>
           </div>
           
+          <!-- Bootstrap tabs (data-bs-toggle="tab"), switched entirely client-side -
+               all tab panes below are always in the DOM, Bootstrap just toggles
+               which one is visible. "Communication" groups several tabs behind
+               one dropdown instead of a flat tab list, since they'd otherwise
+               overflow the tab bar. -->
           <ul class="nav nav-tabs" id="myTab" role="tablist">
           <li class="nav-item" role="presentation">
             <button class="nav-link active" id="measurements-tab" data-bs-toggle="tab" data-bs-target="#measurements" type="button" role="tab" aria-controls="measurements" aria-selected="true">{{ $t("measurements") }}</button>
@@ -205,6 +253,10 @@ export default {
             <button class="nav-link" id="expertsettings-tab" data-bs-toggle="tab" data-bs-target="#expertsettings" type="button" role="tab" aria-controls="expertsettings" aria-selected="false">{{ $t("expertsettings") }}</button>
           </li>
           <li class="nav-item" role="presentation">
+            <!-- NOTE: $t("beta") has no matching entry in the translation
+                 files (only "betatest" does, used further below for this
+                 same tab's own heading) - this renders as the literal key
+                 "beta" instead of a translated label. -->
             <button class="nav-link" id="networksettings-tab" data-bs-toggle="tab" data-bs-target="#networksettings" type="button" role="tab" aria-controls="networksettings" aria-selected="false" @click="loadNetworkConfig()">{{ $t("networksettings") }} ({{ $t("beta") }})</button>
           </li>
         </ul>
@@ -214,6 +266,12 @@ export default {
           <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
           <div class="tab-pane fade show active w-100" id="measurements" role="tabpanel" aria-labelledby="measurements-tab">
             <div class="container">
+              <!-- The current- and voltage-measurement sections below repeat the
+                   same row layout once per phase (Phase 1/2/3, plus a "Neutral"
+                   row for current only), each one hardcoded rather than
+                   generated from a loop - indexing into smartpiACConfiguration's
+                   per-field arrays (CTType[1..4], Voltage[1..3], etc.) by phase
+                   number. -->
               <div class="row margint10 align-items-center">
                 <h2>{{ $t("frequency") }}</h2>
               </div>
@@ -714,6 +772,10 @@ export default {
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="mqtt-password">{{ $t("password") }}</span>
                     </div>
+                    <!-- Show/hide-password toggle, repeated (with its own boolean
+                         flag) for every password field on this page: an inline
+                         eye/eye-slash SVG button flips the input's type between
+                         "password" and "text". -->
                     <input :type="showMQTTpass ? 'text' : 'password'" class="form-control" aria-describedby="mqtt-password" v-model="smartpiConfiguration.MQTTpass" @input="saveChange">
                     <button class="btn btn-outline-secondary" type="button" @click="showMQTTpass = !showMQTTpass" tabindex="-1">
                       <svg v-if="!showMQTTpass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
@@ -1226,6 +1288,11 @@ export default {
                       </li>
                     </ul>
                   </div>
+                  <!-- Looks like a stray copy/paste from the measurements tab's
+                       Phase 1 CT block above: it duplicates that exact
+                       primary-current field (down to reusing the
+                       "primary-current1" id, so this page now has two
+                       elements with the same id), unrelated to log level. -->
                   <div v-if="smartpiACConfiguration.CTType">
                     <div v-if="smartpiACConfiguration.CTType[1] === 'X/1A' || smartpiACConfiguration.CTType[1] === 'X/5A'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
@@ -1246,6 +1313,11 @@ export default {
               <div class="row margint10 align-items-center">
                 <h2>{{ $t("networksettings") }} ({{ $t("betatest") }})</h2>
               </div>
+              <!-- One block per network connection/interface, each listing its
+                   addresses with a delete icon (manual addresses only, and only
+                   when more than one remains - see removeIp()'s comment) plus
+                   an inline "add address" form toggled per-connection via
+                   addIpLine[connection.Name] (+ icon below). -->
               <div class="row margint20 align-items-center" v-for="(connection, index) in networkConnections">
 
                 <div class="row">
@@ -1258,15 +1330,20 @@ export default {
                       <div class="col-2">{{ address.IpMethod }}</div>
                       <div class="col-2">
                         <a class="l-nav_link marginb0 paddingt0" href="#" v-if="(address.IpMethod == 'manual') && (connection.ConnectionAddresses.length > 1)" @click="removeIp(connection.Name,address.Ipv4Address,address.CidrSuffix)"><i class="icon-trash"></i></a>
-                      </div>                    
+                      </div>
                     </div>
-                  </div>    
+                  </div>
                   <div class="col-1">
+                    <!-- Earlier approach was a Bootstrap modal (#addIpModal, at
+                         the bottom of this file) for adding an address; that was
+                         abandoned in favor of the simpler inline toggle below,
+                         but the unused modal markup (with its own unwired
+                         "Save changes" button) was never removed. -->
                     <!-- <a class="l-nav_link" href="#" @click="addIpDialog(connection.Name)"><i class="icon-plus"></i></a> -->
                     <!-- <button type="button" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#addIpModal">
                       <i class="icon-plus"></i>
                     </button> -->
-                    <a class="l-nav_link marginb0 paddingt0"  href="#" v-on:click="addIpLine[connection.Name] = !addIpLine[connection.Name]"><i class="icon-plus"></i></a>                    
+                    <a class="l-nav_link marginb0 paddingt0"  href="#" v-on:click="addIpLine[connection.Name] = !addIpLine[connection.Name]"><i class="icon-plus"></i></a>
                   </div>
                 </div>
 
@@ -1323,7 +1400,10 @@ export default {
       </div>
     </main>
 
-    <!-- Modal -->
+    <!-- Modal: unused leftover, see the note above the network tab's "+" button
+         - nothing in this file opens it anymore, and its content is still the
+         generic Bootstrap example markup ("Modal title", "...", unwired "Save
+         changes" button). -->
 <div class="modal fade" id="addIpModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">

@@ -1,3 +1,4 @@
+<!-- Placeholder route (/about) from the default "create-vue" scaffold; not linked from the app's navigation. -->
 <template>
   <div class="about">
     <h1>This is an about page</h1>

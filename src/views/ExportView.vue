@@ -15,7 +15,9 @@ import MainNavigation from '@/components/MainNavigation.vue';
 
 DataTable.use(DataTablesLib);
 
-
+// Lets the user pick a date range (and optional aggregation interval),
+// fetches the matching measurement data as CSV from the API, and shows it
+// both as a browsable table (via datatables.net) and as a downloadable file.
 export default {
   name: 'ExportView',
   components: { MainNavigation, DataTable },
@@ -23,10 +25,12 @@ export default {
   data: () => ({
 
     loaded: false,
-    csvData: null as any,
-    csvTableData: null as any,
-    csvHeader: null as any,
+    csvData: null as any, // raw CSV text as returned by the API, kept around for the download button
+    csvTableData: null as any, // csvData, parsed into rows for DataTable
+    csvHeader: null as any, // csvData's header row, parsed into DataTable column definitions
 
+    // Passed straight through to datatables.net; see their docs for the
+    // full set of available options.
     tableOptions: {
         paging: true,
         pageLength: 50,
@@ -47,6 +51,11 @@ export default {
   }),
   methods: {
 
+    // Fetches the CSV export for the given range/aggregate from the API and
+    // parses it into a header + row array DataTable can render. The API
+    // returns semicolon-separated values with German-style decimal commas
+    // (e.g. "1,234"), so numeric columns are re-parsed and normalized to
+    // fixed-point dot-decimal strings for display.
     fetchcsvTableData: async function (startdate?: Date, stopdate?: Date, aggregate?: string) {
 
         this.loaded = false;
@@ -110,7 +119,10 @@ export default {
         });
 
     },
-    downloadCSVData() {        
+    // Builds a client-side "data:" URL from the already-fetched CSV text and
+    // clicks a throwaway <a download> link - no extra request to the server,
+    // this just re-offers the data that's already in memory as a file.
+    downloadCSVData() {
         const anchor = document.createElement('a');
         anchor.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(this.csvData);
         anchor.target = '_blank';
@@ -120,6 +132,9 @@ export default {
     setStartD() {
         this.startD = parse(this.startDatePicker, "yyyy-MM-dd", this.startD)
     },
+    // NOTE: this reads `this.startDatePicker` and writes `this.startD`, same
+    // as setStartD() above - looks like a copy/paste bug; changing the stop
+    // date picker currently has no effect on `stopD` at all.
     setStopD() {
         this.startD = parse(this.startDatePicker, "yyyy-MM-dd", this.startD)
     },
@@ -128,18 +143,23 @@ export default {
         // if (aggregate == )
         this.aggregateview = aggregate;
     },
+    // Triggers the fetch with whatever range/aggregate is currently selected.
+    // "" (the default) means "as saved" - don't pass an aggregate at all, so
+    // the API returns data at its native storage resolution.
     loadTable() {
       if (this.aggregateview == "") {
         this.fetchcsvTableData(this.startD, this.stopD);
       } else {
         this.fetchcsvTableData(this.startD, this.stopD, this.aggregateview);
       }
-      
+
     }
-    
+
   },
   created() {
-    this.fetchcsvTableData();   
+    // Load yesterday's data (the default range set up in setup() below) as
+    // soon as the view mounts, so the table isn't empty on first render.
+    this.fetchcsvTableData();
   },
   setup() {
     const authStore = useAuthStore();
@@ -147,6 +167,7 @@ export default {
     var startD = new Date();
     var stopD = new Date();
 
+    // Default range: all of yesterday.
     startD = subDays(startD, 1);
     startD.setHours(0, 0, 0, 0);
     stopD.setHours(23, 59, 59, 999);
