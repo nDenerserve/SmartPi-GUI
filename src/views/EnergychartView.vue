@@ -428,10 +428,6 @@ export default {
           this.startD = addDays(this.startD, 1);
           this.fetchBarchartdata(this.startD, this.stopD, this.aggregateview);
         }
-        // NOTE: unlike the other views' removeDate branches, this always
-        // re-fetches again here regardless of whether the `if` above already
-        // did, i.e. the request is sent twice when shrinking is possible.
-        this.fetchBarchartdata(this.startD, this.stopD, this.aggregateview);
       } else if (this.view == "month") {
         tmpDate = subMonths(this.stopD, 1)
         tmpDate.setHours(23, 59, 59, 999);

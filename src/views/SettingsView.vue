@@ -253,11 +253,7 @@ export default {
             <button class="nav-link" id="expertsettings-tab" data-bs-toggle="tab" data-bs-target="#expertsettings" type="button" role="tab" aria-controls="expertsettings" aria-selected="false">{{ $t("expertsettings") }}</button>
           </li>
           <li class="nav-item" role="presentation">
-            <!-- NOTE: $t("beta") has no matching entry in the translation
-                 files (only "betatest" does, used further below for this
-                 same tab's own heading) - this renders as the literal key
-                 "beta" instead of a translated label. -->
-            <button class="nav-link" id="networksettings-tab" data-bs-toggle="tab" data-bs-target="#networksettings" type="button" role="tab" aria-controls="networksettings" aria-selected="false" @click="loadNetworkConfig()">{{ $t("networksettings") }} ({{ $t("beta") }})</button>
+            <button class="nav-link" id="networksettings-tab" data-bs-toggle="tab" data-bs-target="#networksettings" type="button" role="tab" aria-controls="networksettings" aria-selected="false" @click="loadNetworkConfig()">{{ $t("networksettings") }} ({{ $t("betatest") }})</button>
           </li>
         </ul>
         <div class="tab-content w-100" id="settingsTabContent">
@@ -1287,19 +1283,6 @@ export default {
                       }}</a>
                       </li>
                     </ul>
-                  </div>
-                  <!-- Looks like a stray copy/paste from the measurements tab's
-                       Phase 1 CT block above: it duplicates that exact
-                       primary-current field (down to reusing the
-                       "primary-current1" id, so this page now has two
-                       elements with the same id), unrelated to log level. -->
-                  <div v-if="smartpiACConfiguration.CTType">
-                    <div v-if="smartpiACConfiguration.CTType[1] === 'X/1A' || smartpiACConfiguration.CTType[1] === 'X/5A'" class="input-group input-group-sm mb-3">
-                      <div class="input-group-prepend">
-                        <span class="input-group-text" id="primary-current1">{{ $t("primarycurrent") }}</span>
-                      </div>
-                      <input type="text" class="form-control" aria-describedby="primary-current1"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[1]" @input="saveACChange">
-                    </div>
                   </div>
                 </div>
               </div>

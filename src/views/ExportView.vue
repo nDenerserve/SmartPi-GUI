@@ -132,11 +132,8 @@ export default {
     setStartD() {
         this.startD = parse(this.startDatePicker, "yyyy-MM-dd", this.startD)
     },
-    // NOTE: this reads `this.startDatePicker` and writes `this.startD`, same
-    // as setStartD() above - looks like a copy/paste bug; changing the stop
-    // date picker currently has no effect on `stopD` at all.
     setStopD() {
-        this.startD = parse(this.startDatePicker, "yyyy-MM-dd", this.startD)
+        this.stopD = parse(this.stopDatePicker, "yyyy-MM-dd", this.stopD)
     },
     changeAggregate: function (aggregate: string) {
 

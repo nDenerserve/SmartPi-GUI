@@ -330,27 +330,8 @@ export default {
                   }
 
                   
-                } else if (view == "year") {
-                  // Dead branch: fetchBarchartdata() on this page is only
-                  // ever called with view "day" or "month" (see created()
-                  // below); this "year" case was copied over from
-                  // EnergychartView.vue, which does support a year view.
-
-                  let shortDate = new Intl.DateTimeFormat("de", {
-                      dateStyle: "short",
-                    });
-
-                  if (aggregate == "1mo") {
-                    const format = new Intl.DateTimeFormat("de", {month: "short", year: "numeric"}).format;
-
-                    energylabels.push(format(new Date(energydata[i].datapoint[j].time)));
-                  } else if (aggregate == "1d") {
-                    energylabels.push(shortDate.format(new Date(energydata[i].datapoint[j].time)));
-                  }
-
-
                 }
-                
+
               }
 
               // Convert Wh to kWh, and plot "Ep*" (energy produced) fields as
