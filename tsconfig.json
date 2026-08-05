@@ -1,4 +1,6 @@
 {
+  // Root solution file: no sources of its own, just wires up the project references below
+  // so editors/tsc build them in the right order and with the right settings.
   "files": [],
   "references": [
     {

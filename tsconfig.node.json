@@ -1,4 +1,6 @@
 {
+  // Config for build tooling that runs under Node (Vite/Vitest/etc. config files),
+  // kept separate from the app config since it targets Node, not the browser.
   "extends": "@tsconfig/node18/tsconfig.json",
   "include": [
     "vite.config.*",

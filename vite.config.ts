@@ -10,13 +10,13 @@ export default defineConfig({
   plugins: [
     vue(),
     VueI18nPlugin({
-      strictMessage: false,
+      strictMessage: false, // allow HTML/markup inside translation strings
       include: resolve(dirname(fileURLToPath(import.meta.url)), './src/lang/translations/**'), // provide a path to the folder where you'll store translation data (see below)
     }),
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)) // lets app code import via '@/...' instead of relative paths
     }
   }
 })

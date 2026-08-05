@@ -1,18 +1,19 @@
 {
+  // App source config: extends Vue's DOM-flavored base config for browser globals/types.
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {
-    // "strict": false,                   
-    "noImplicitAny": false,            
-    "strictNullChecks": false,         
-    // "strictFunctionTypes": false,      
-    "noImplicitThis": false,           
+    // "strict": false,
+    "noImplicitAny": false,            // relaxed vs. base "strict": true — allows implicit any
+    "strictNullChecks": false,         // relaxed vs. base "strict": true — null/undefined aren't tracked
+    // "strictFunctionTypes": false,
+    "noImplicitThis": false,           // relaxed vs. base "strict": true — allows untyped `this`
     // "alwaysStrict": false,
-    "composite": true,
+    "composite": true, // required for this file to be referenced by tsconfig.json
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"] // mirrors the '@' alias configured in vite.config.ts
     }
   }
 }
