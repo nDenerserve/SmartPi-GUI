@@ -285,8 +285,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div v-if="smartpiACConfiguration.MeasureCurrent"  class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[1]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("measure") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[1]" @change="saveACChange" role="switch" id="measureCurrent1">
+                    <label class="form-check-label" for="measureCurrent1">{{ $t("measure") }}</label>
                   </div>
                 </div>
                 <div class="col-2">
@@ -352,8 +352,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div v-if="smartpiACConfiguration.CurrentDirection" class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[1]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("changecurrentdirection") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[1]" @change="saveACChange" role="switch" id="currentDirection1">
+                    <label class="form-check-label" for="currentDirection1">{{ $t("changecurrentdirection") }}</label>
                   </div>
                 </div>
               </div>
@@ -363,8 +363,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div v-if="smartpiACConfiguration.MeasureCurrent"  class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[2]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("measure") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[2]" @change="saveACChange" role="switch" id="measureCurrent2">
+                    <label class="form-check-label" for="measureCurrent2">{{ $t("measure") }}</label>
                   </div>
                 </div>
                 <div class="col-2">
@@ -430,8 +430,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div v-if="smartpiACConfiguration.CurrentDirection" class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[2]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("changecurrentdirection") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[2]" @change="saveACChange" role="switch" id="currentDirection2">
+                    <label class="form-check-label" for="currentDirection2">{{ $t("changecurrentdirection") }}</label>
                   </div>
                 </div>
               </div>
@@ -441,8 +441,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div v-if="smartpiACConfiguration.MeasureCurrent" class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[3]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("measure") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[3]" @change="saveACChange" role="switch" id="measureCurrent3">
+                    <label class="form-check-label" for="measureCurrent3">{{ $t("measure") }}</label>
                   </div>
                 </div>
                 <div class="col-2">
@@ -508,8 +508,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div v-if="smartpiACConfiguration.CurrentDirection" class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[3]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("changecurrentdirection") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[3]" @change="saveACChange" role="switch" id="currentDirection3">
+                    <label class="form-check-label" for="currentDirection3">{{ $t("changecurrentdirection") }}</label>
                   </div>
                 </div>
               </div>
@@ -519,8 +519,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div v-if="smartpiACConfiguration.MeasureCurrent" class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[4]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("measure") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureCurrent[4]" @change="saveACChange" role="switch" id="measureCurrent4">
+                    <label class="form-check-label" for="measureCurrent4">{{ $t("measure") }}</label>
                   </div>
                 </div>
                 <div class="col-2">
@@ -586,8 +586,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div v-if="smartpiACConfiguration.CurrentDirection" class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[4]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("changecurrentdirection") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.CurrentDirection[4]" @change="saveACChange" role="switch" id="currentDirection4">
+                    <label class="form-check-label" for="currentDirection4">{{ $t("changecurrentdirection") }}</label>
                   </div>
                 </div>
               </div>
@@ -600,8 +600,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div v-if="smartpiACConfiguration.MeasureVoltage"  class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureVoltage[1]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("measure") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureVoltage[1]" @change="saveACChange" role="switch" id="measureVoltage1">
+                    <label class="form-check-label" for="measureVoltage1">{{ $t("measure") }}</label>
                   </div>
                 </div>
                 <div class="col-2">
@@ -631,8 +631,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div v-if="smartpiACConfiguration.MeasureVoltage"  class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureVoltage[2]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("measure") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureVoltage[2]" @change="saveACChange" role="switch" id="measureVoltage2">
+                    <label class="form-check-label" for="measureVoltage2">{{ $t("measure") }}</label>
                   </div>
                 </div>
                 <div class="col-2">   
@@ -662,8 +662,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div v-if="smartpiACConfiguration.MeasureVoltage"  class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureVoltage[3]" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("measure") }}</label>
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.MeasureVoltage[3]" @change="saveACChange" role="switch" id="measureVoltage3">
+                    <label class="form-check-label" for="measureVoltage3">{{ $t("measure") }}</label>
                   </div>
                 </div>
                 <div class="col-2"> 
@@ -688,7 +688,7 @@ export default {
                 </div>
               </div>  
               <div class="row margint20">
-                <h2>{{ $t("rogowskicoil") }} ({{ $t("betatest") }})</h2>
+                <h2>{{ $t("rogowskicoil") }}</h2>
               </div>
               <div class="row">
                 <div class="col-4">
@@ -696,8 +696,8 @@ export default {
                 </div>
                 <div class="col-4">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.Integrator" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.Integrator" @change="saveACChange" role="switch" id="integratorEnabled">
+                    <!-- <label class="form-check-label" for="integratorEnabled">{{ $t("active") }}</label> -->
                   </div>
                 </div>
               </div>        
@@ -714,8 +714,8 @@ export default {
                 </div>
                 <div class="col-4">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.MQTTenabled" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.MQTTenabled" @change="saveChange" role="switch" id="mqttEnabled">
+                    <!-- <label class="form-check-label" for="mqttEnabled">{{ $t("active") }}</label> -->
                   </div>
                 </div>
               </div>
@@ -890,8 +890,8 @@ export default {
                 </div>
                 <div class="col-4">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.FTPupload" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.FTPupload" @change="saveChange" role="switch" id="ftpUpload">
+                    <!-- <label class="form-check-label" for="ftpUpload">{{ $t("active") }}</label> -->
                   </div>
                 </div>
               </div>
@@ -941,8 +941,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.FTPcsv" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.FTPcsv" @change="saveChange" role="switch" id="ftpCsv">
+                    <!-- <label class="form-check-label" for="ftpCsv">{{ $t("active") }}</label> -->
                   </div>
                 </div>
                 <div class="col-3">
@@ -950,8 +950,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.FTPxml" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.FTPxml" @change="saveChange" role="switch" id="ftpXml">
+                    <!-- <label class="form-check-label" for="ftpXml">{{ $t("active") }}</label> -->
                   </div>
                 </div>
               </div>
@@ -986,8 +986,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.ModbusTCPenabled" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.ModbusTCPenabled" @change="saveChange" role="switch" id="modbusTcpEnabled">
+                    <!-- <label class="form-check-label" for="modbusTcpEnabled">{{ $t("active") }}</label> -->
                   </div>
                 </div>
                 <div class="col-3">         
@@ -1005,8 +1005,8 @@ export default {
                 </div>
                 <div class="col-3">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.ModbusRTUenabled" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.ModbusRTUenabled" @change="saveChange" role="switch" id="modbusRtuEnabled">
+                    <!-- <label class="form-check-label" for="modbusRtuEnabled">{{ $t("active") }}</label> -->
                   </div>
                 </div>
                 <div class="col-3">         
@@ -1039,8 +1039,8 @@ export default {
                 </div>
                 <div class="col-4">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.EmeterEnabled" @change="saveACChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.EmeterEnabled" @change="saveACChange" role="switch" id="emeterEnabled">
+                    <!-- <label class="form-check-label" for="emeterEnabled">{{ $t("active") }}</label> -->
                   </div>
                 </div>
               </div>
@@ -1093,8 +1093,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.DatabaseEnabled" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.DatabaseEnabled" @change="saveChange" role="switch" id="databaseEnabled">
+                    <!-- <label class="form-check-label" for="databaseEnabled">{{ $t("active") }}</label> -->
                   </div>
                 </div>
                 <div class="col-2">         
@@ -1170,8 +1170,8 @@ export default {
                 </div>
                 <div class="col-2">
                   <div class="form-check form-switch form-switch-md">
-                    <input class="form-check-input" type="checkbox" v-model="smartpiConfiguration.StoreSamples" @change="saveChange" role="switch" id="flexSwitchCheckDefault">
-                    <!-- <label class="form-check-label" for="flexSwitchCheckDefault">{{ $t("active") }}</label> -->
+                    <input class="form-check-input" type="checkbox" v-model="smartpiACConfiguration.StoreSamples" @change="saveACChange" role="switch" id="storeSamples">
+                    <!-- <label class="form-check-label" for="storeSamples">{{ $t("active") }}</label> -->
                   </div>
                 </div>
                 <div class="col-4">
