@@ -129,6 +129,7 @@
     "apitokens_empty": "Noch keine Tokens vorhanden.",
     "scope_digitalout": "Digitalausg\u00e4nge",
     "scope_analogout": "Analogausgang (4-20mA)",
+    "scope_analogin": "Analogeingang (4-20mA / 0-10V)",
     "scope_configread": "Konfiguration lesen",
     "scope_configwrite": "Konfiguration \u00e4ndern",
     "scope_network": "Netzwerkeinstellungen",

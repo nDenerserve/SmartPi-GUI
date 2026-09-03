@@ -129,6 +129,7 @@
     "apitokens_empty": "No tokens yet.",
     "scope_digitalout": "Digital outputs",
     "scope_analogout": "Analog output (4-20mA)",
+    "scope_analogin": "Analog input (4-20mA / 0-10V)",
     "scope_configread": "Read configuration",
     "scope_configwrite": "Change configuration",
     "scope_network": "Network settings",
