@@ -115,5 +115,21 @@
     "minutebasedstorage": "Storage minute values",
     "samplebasedstorage": "Storage of every sample",
     "smartpicloud": "SmartPi Cloud",
-    "mqttqos": "MQTT QoS"
+    "mqttqos": "MQTT QoS",
+    "apitokens": "API tokens",
+    "apitokens_intro": "Tokens for other programs and devices - such as a Node-RED flow - to access this SmartPi's API. Unlike your own login, a token here never expires: delete it to revoke access.",
+    "apitokens_label": "Name",
+    "apitokens_labelplaceholder": "e.g. Node-RED \u00b7 heating relay",
+    "apitokens_scopes": "Permissions",
+    "apitokens_create": "Create token",
+    "apitokens_created": "Created",
+    "apitokens_lastused": "Last used",
+    "apitokens_never": "never used",
+    "apitokens_confirmdelete": "Delete this token? Anything still using it will stop working immediately.",
+    "apitokens_empty": "No tokens yet.",
+    "scope_digitalout": "Digital outputs",
+    "scope_analogout": "Analog output (4-20mA)",
+    "scope_configread": "Read configuration",
+    "scope_configwrite": "Change configuration",
+    "scope_network": "Network settings"
 }
