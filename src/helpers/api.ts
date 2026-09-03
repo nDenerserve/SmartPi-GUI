@@ -13,6 +13,7 @@ import { useAuthStore } from '../stores/auth';
 const config = {
   baseURL: 'http://'+window.location.hostname+':1080/api/v1',
   // baseURL: 'http://10.30.0.70:1080/api/v1', // for testing
+  // baseURL: 'http://10.1.0.249:1080/api/v1', // for testing
   headers: {
     common: {
         "Accept": "Application/json, text/plain, */*",
