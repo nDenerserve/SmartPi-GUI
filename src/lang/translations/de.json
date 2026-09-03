@@ -115,5 +115,21 @@
     "minutebasedstorage": "Speicherung Minutenwerte",
     "samplebasedstorage": "Speicherung jedes Samples",
     "smartpicloud": "SmartPi Cloud",
-    "mqttqos": "MQTT QoS"
+    "mqttqos": "MQTT QoS",
+    "apitokens": "API-Tokens",
+    "apitokens_intro": "Tokens f\u00fcr andere Programme und Ger\u00e4te \u2013 etwa einen Node-RED-Flow \u2013 zum Zugriff auf die API dieses SmartPi. Anders als die eigene Anmeldung l\u00e4uft ein Token hier nie ab: zum Entziehen des Zugriffs einfach l\u00f6schen.",
+    "apitokens_label": "Name",
+    "apitokens_labelplaceholder": "z. B. Node-RED \u00b7 Heizungsrelais",
+    "apitokens_scopes": "Berechtigungen",
+    "apitokens_create": "Token erzeugen",
+    "apitokens_created": "Erzeugt",
+    "apitokens_lastused": "Zuletzt verwendet",
+    "apitokens_never": "noch nie verwendet",
+    "apitokens_confirmdelete": "Dieses Token l\u00f6schen? Alles, was es noch verwendet, funktioniert danach sofort nicht mehr.",
+    "apitokens_empty": "Noch keine Tokens vorhanden.",
+    "scope_digitalout": "Digitalausg\u00e4nge",
+    "scope_analogout": "Analogausgang (4-20mA)",
+    "scope_configread": "Konfiguration lesen",
+    "scope_configwrite": "Konfiguration \u00e4ndern",
+    "scope_network": "Netzwerkeinstellungen"
   }

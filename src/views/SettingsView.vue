@@ -32,6 +32,14 @@ export default {
     addIpLine: [] as any,
     newIpAddress: '',
     newCIDRSuffix: 24,
+    // API tokens tab: the token list plus the inline "create token" form's
+    // state, same open/close-toggle idiom as addIpLine above for the
+    // network tab.
+    deviceTokens: [] as any[],
+    showCreateToken: false,
+    newTokenLabel: '',
+    newTokenScopes: [] as string[],
+    availableScopes: ['digitalout', 'analogout', 'config:read', 'config:write', 'network'],
     // Password visibility toggles for the various password fields below
     // (each field has its own show/hide eye-icon button in the template).
     showMQTTpass: false,
@@ -182,11 +190,72 @@ export default {
       .catch(function (error) {
         console.log(error);
       });
-      
+
+    },
+
+    // Loads the device token list. Called when the API tokens tab is opened
+    // rather than eagerly on mount, same lazy pattern as
+    // loadNetworkConfig() above for the network tab.
+    fetchDeviceTokens: function () {
+      api.get('/tokens')
+      .then((response) => {
+        this.deviceTokens = response.data;
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+    },
+    // Creates a token with the entered label and the checked scopes, then
+    // reloads the list so the new token - secret included - shows up
+    // immediately. There is no separate "here is your token, copy it now"
+    // dialog: the secret stays visible in the list for as long as the
+    // token exists, so a lost copy is a non-event.
+    createDeviceToken: function () {
+      if (!this.newTokenLabel || this.newTokenScopes.length === 0) {
+        return;
+      }
+      api.post('/tokens', { label: this.newTokenLabel, scopes: this.newTokenScopes })
+      .then(() => {
+        this.newTokenLabel = '';
+        this.newTokenScopes = [];
+        this.showCreateToken = false;
+        this.fetchDeviceTokens();
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+    },
+    // Revokes a token. This takes effect on the very next request made
+    // with it - the server checks the token store on every request rather
+    // than trusting a signature, which is what makes revocation here
+    // actually work.
+    deleteDeviceToken: function (id: string) {
+      if (!window.confirm(this.$t('apitokens_confirmdelete') as string)) {
+        return;
+      }
+      api.delete(`/tokens/${id}`)
+      .then(() => {
+        this.fetchDeviceTokens();
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+    },
+    // Renders lastUsedAt as "3 minutes ago" / "2 days ago"; a token that
+    // was created but never used yet shows a placeholder instead of a
+    // formatted null.
+    formatLastUsed: function (lastUsedAt: string | null) {
+      if (!lastUsedAt) {
+        return this.$t('apitokens_never');
+      }
+      return formatDistance(new Date(lastUsedAt), new Date(), { addSuffix: true });
+    },
+    // Maps a scope value ("config:read") to its translated label - the
+    // colon can't be part of an i18n key, so it is stripped for the lookup.
+    scopeLabel: function (scope: string) {
+      return this.$t('scope_' + scope.replace(':', ''));
     }
 
-    
-    
   },
   created() {
 
@@ -254,6 +323,9 @@ export default {
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="networksettings-tab" data-bs-toggle="tab" data-bs-target="#networksettings" type="button" role="tab" aria-controls="networksettings" aria-selected="false" @click="loadNetworkConfig()">{{ $t("networksettings") }} ({{ $t("betatest") }})</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="apitokens-tab" data-bs-toggle="tab" data-bs-target="#apitokens" type="button" role="tab" aria-controls="apitokens" aria-selected="false" @click="fetchDeviceTokens()">{{ $t("apitokens") }}</button>
           </li>
         </ul>
         <div class="tab-content w-100" id="settingsTabContent">
@@ -1379,6 +1451,81 @@ export default {
               </div>
             </div>
           </div>
+
+          <!-- API tokens for other programs and devices (Node-RED and
+               similar) to reach this SmartPi's API. Unlike the session
+               token issued at login, a token created here never expires -
+               it is valid until deleted here, which is the only way to
+               revoke it (see TokenVerifyMiddleWare on the server, which
+               checks the token store on every request). -->
+          <div class="tab-pane fade w-100" id="apitokens" role="tabpanel" aria-labelledby="apitokens-tab">
+            <div class="container">
+              <div class="row margint10 align-items-center">
+                <h2>{{ $t("apitokens") }}</h2>
+              </div>
+              <div class="row margint10">
+                <p>{{ $t("apitokens_intro") }}</p>
+              </div>
+
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ $t("apitokens_label") }}</th>
+                    <th scope="col">{{ $t("apitokens_scopes") }}</th>
+                    <th scope="col">{{ $t("apitokens_created") }}</th>
+                    <th scope="col">{{ $t("apitokens_lastused") }}</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="deviceTokens.length === 0">
+                    <td colspan="5" class="text-muted">{{ $t("apitokens_empty") }}</td>
+                  </tr>
+                  <tr v-for="token in deviceTokens" :key="token.id">
+                    <td>
+                      {{ token.label }}<br>
+                      <code>{{ token.secret }}</code>
+                    </td>
+                    <td>
+                      <span v-for="scope in token.scopes" :key="scope" class="badge text-bg-secondary marginr10">{{ scopeLabel(scope) }}</span>
+                    </td>
+                    <td>{{ new Date(token.createdAt).toLocaleString() }}</td>
+                    <td>{{ formatLastUsed(token.lastUsedAt) }}</td>
+                    <td>
+                      <a class="l-nav_link marginb0 paddingt0" href="#" @click="deleteDeviceToken(token.id)"><i class="icon-trash"></i></a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Inline "create token" form, same open/close-toggle idiom as
+                   the network tab's "add address" form above. -->
+              <div class="row align-items-center">
+                <div class="col-1">
+                  <a class="l-nav_link marginb0 paddingt0" href="#" @click="showCreateToken = !showCreateToken"><i class="icon-plus"></i></a>
+                </div>
+              </div>
+
+              <div class="row marginr0 marginl0" v-if="showCreateToken">
+                <div class="row margint10">
+                  <div class="col-4">
+                    <input type="text" class="form-control" :placeholder="$t('apitokens_labelplaceholder')" v-model="newTokenLabel" aria-label="token-label">
+                  </div>
+                  <div class="col-6">
+                    <div class="form-check form-check-inline" v-for="scope in availableScopes" :key="scope">
+                      <input class="form-check-input" type="checkbox" :id="'scope-' + scope" :value="scope" v-model="newTokenScopes">
+                      <label class="form-check-label" :for="'scope-' + scope">{{ scopeLabel(scope) }}</label>
+                    </div>
+                  </div>
+                  <div class="col-1">
+                    <a class="l-nav_link marginb0" href="#" @click="createDeviceToken()"><i class="icon-save"></i></a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
         </div>
       </div>
     </main>
