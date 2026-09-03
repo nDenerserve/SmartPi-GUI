@@ -131,5 +131,7 @@
     "scope_analogout": "Analog output (4-20mA)",
     "scope_configread": "Read configuration",
     "scope_configwrite": "Change configuration",
-    "scope_network": "Network settings"
+    "scope_network": "Network settings",
+    "publishinterval": "Publish interval (s)",
+    "publishinterval_hint": "0 = every sample"
 }

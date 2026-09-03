@@ -851,12 +851,22 @@ export default {
                     </button>
                   </div>
                 </div>
-                <div class="col-4">         
+                <div class="col-4">
                   <div class="input-group mb-3">
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="mqtt-topic">{{ $t("topic") }}</span>
                     </div>
                     <input type="text" class="form-control" aria-describedby="mqtt-topic" v-model="smartpiConfiguration.MQTTtopic" @input="saveChange">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="mqtt-publishinterval">{{ $t("publishinterval") }}</span>
+                    </div>
+                    <input type="number" min="0" class="form-control" aria-describedby="mqtt-publishinterval" :placeholder="$t('publishinterval_hint')" v-model="smartpiConfiguration.MQTTinterval" @input="saveChange">
                   </div>
                 </div>
               </div>
@@ -946,6 +956,14 @@ export default {
                       <span class="input-group-text" id="smartpicloud-qos">{{ $t("mqttqos") }}</span>
                     </div>
                     <input type="number" min="0" max="2" class="form-control" aria-describedby="smartpicloud-qos" v-model="smartpiConfiguration.SmartpicloudMQTTQoS" @input="saveChange">
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="smartpicloud-publishinterval">{{ $t("publishinterval") }}</span>
+                    </div>
+                    <input type="number" min="0" class="form-control" aria-describedby="smartpicloud-publishinterval" :placeholder="$t('publishinterval_hint')" v-model="smartpiConfiguration.SmartpicloudMQTTinterval" @input="saveChange">
                   </div>
                 </div>
               </div>

@@ -131,5 +131,7 @@
     "scope_analogout": "Analogausgang (4-20mA)",
     "scope_configread": "Konfiguration lesen",
     "scope_configwrite": "Konfiguration \u00e4ndern",
-    "scope_network": "Netzwerkeinstellungen"
+    "scope_network": "Netzwerkeinstellungen",
+    "publishinterval": "Sendeintervall (s)",
+    "publishinterval_hint": "0 = jedes Sample"
   }
