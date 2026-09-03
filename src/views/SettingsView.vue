@@ -39,7 +39,7 @@ export default {
     showCreateToken: false,
     newTokenLabel: '',
     newTokenScopes: [] as string[],
-    availableScopes: ['digitalout', 'analogout', 'config:read', 'config:write', 'network'],
+    availableScopes: ['digitalout', 'analogout', 'analogin', 'config:read', 'config:write', 'network'],
     // Password visibility toggles for the various password fields below
     // (each field has its own show/hide eye-icon button in the template).
     showMQTTpass: false,
