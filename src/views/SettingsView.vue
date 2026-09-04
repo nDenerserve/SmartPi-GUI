@@ -275,7 +275,7 @@ export default {
         // error (see helpers/api.ts): on failure, `response` here is the
         // Axios error object itself, not a real response, so isAxiosError
         // is the only reliable way to tell the two apart.
-        if (response.isAxiosError) {
+        if ((response as any).isAxiosError) {
           this.i2cScanError = true;
           return;
         }
