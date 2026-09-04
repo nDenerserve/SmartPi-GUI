@@ -39,7 +39,14 @@ export default {
     showCreateToken: false,
     newTokenLabel: '',
     newTokenScopes: [] as string[],
-    availableScopes: ['digitalout', 'analogout', 'analogin', 'config:read', 'config:write', 'network'],
+    availableScopes: ['digitalout', 'analogout', 'analogin', 'config:read', 'config:write', 'network', 'i2c:scan'],
+    // I2C tab: result of the last scan (or {} before the first one), plus a
+    // busy flag for the scan button - unlike the other lazily-loaded tabs
+    // this one is meant to be re-run on demand (via its own button), since
+    // the bus can change - a module plugged in - while the page stays open.
+    i2cScan: {} as any,
+    i2cScanning: false,
+    i2cScanError: false,
     // Password visibility toggles for the various password fields below
     // (each field has its own show/hide eye-icon button in the template).
     showMQTTpass: false,
@@ -254,6 +261,67 @@ export default {
     // colon can't be part of an i18n key, so it is stripped for the lookup.
     scopeLabel: function (scope: string) {
       return this.$t('scope_' + scope.replace(':', ''));
+    },
+
+    // Scans the configured I2C bus for occupied addresses. Called when the
+    // I2C tab is opened, and again from its own "Scan" button.
+    scanI2c: function () {
+      this.i2cScanning = true;
+      this.i2cScanError = false;
+      api.get('/i2c/scan')
+      .then((response) => {
+        this.i2cScanning = false;
+        // The shared api client resolves instead of rejecting on an HTTP
+        // error (see helpers/api.ts): on failure, `response` here is the
+        // Axios error object itself, not a real response, so isAxiosError
+        // is the only reliable way to tell the two apart.
+        if (response.isAxiosError) {
+          this.i2cScanError = true;
+          return;
+        }
+        this.i2cScan = response.data;
+      })
+      .catch((error) => {
+        // Only reached for a network-level failure - see the note above.
+        console.log(error);
+        this.i2cScanning = false;
+        this.i2cScanError = true;
+      });
+    },
+    // Maps an i2c scan entry's status to a Bootstrap badge class - "in_use"
+    // (an address already claimed by a kernel driver) is shown as a warning
+    // rather than the plain success green a freshly detected device gets.
+    i2cStatusBadgeClass: function (status: string) {
+      return status === 'in_use' ? 'text-bg-warning' : 'text-bg-success';
+    },
+    // Builds the hint cell's text: which SmartPi module a scanned address
+    // most likely belongs to. 0x38 and 0x51 are shown as fact, not hedged
+    // with "possibly" like the other, genuinely ambiguous address ranges:
+    // they're both fixed addresses on the SmartPi board itself (the
+    // ADE7878 metering chip and the RTC), always present at exactly that
+    // address, not a guess narrowed down from a range shared with other
+    // chips - unlike the plug-in modules below, and unlike device.hint
+    // (which the backend leaves empty for 0x51 in the first place, since it
+    // has no address-range guess to offer for it).
+    i2cHintText: function (device: any) {
+      const fixedAddresses: Record<string, string> = {
+        '0x38': this.$t('i2c_module_ade7878') as string,
+        '0x51': this.$t('i2c_module_rtc') as string,
+      };
+      if (fixedAddresses[device.address]) {
+        return fixedAddresses[device.address];
+      }
+      if (!device.hint) {
+        return '';
+      }
+      const modules: Record<string, string> = {
+        MCP23017: this.$t('i2c_module_mcp23017') as string,
+        MCP3424: this.$t('i2c_module_mcp3424') as string,
+        MCP4725: this.$t('i2c_module_mcp4725') as string,
+      };
+      const prefix = this.$t('i2c_hintprefix') as string;
+      const module = modules[device.hint];
+      return module ? `${prefix}: ${device.hint} (${module})?` : `${prefix}: ${device.hint}?`;
     }
 
   },
@@ -326,6 +394,9 @@ export default {
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="apitokens-tab" data-bs-toggle="tab" data-bs-target="#apitokens" type="button" role="tab" aria-controls="apitokens" aria-selected="false" @click="fetchDeviceTokens()">{{ $t("apitokens") }}</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="i2c-tab" data-bs-toggle="tab" data-bs-target="#i2c" type="button" role="tab" aria-controls="i2c" aria-selected="false" @click="scanI2c()">{{ $t("i2c") }}</button>
           </li>
         </ul>
         <div class="tab-content w-100" id="settingsTabContent">
@@ -1541,6 +1612,58 @@ export default {
                 </div>
               </div>
 
+            </div>
+          </div>
+
+          <div class="tab-pane fade w-100" id="i2c" role="tabpanel" aria-labelledby="i2c-tab">
+            <div class="container">
+              <div class="row margint10 align-items-center">
+                <h2>{{ $t("i2c") }}</h2>
+              </div>
+              <div class="row margint10">
+                <p>{{ $t("i2c_intro") }}</p>
+              </div>
+
+              <div class="row margint10 align-items-center">
+                <div class="col-auto">
+                  <button type="button" class="btn btn-outline-primary" :disabled="i2cScanning" @click="scanI2c()">
+                    {{ i2cScanning ? $t("i2c_scanning") : $t("i2c_scan") }}
+                  </button>
+                </div>
+                <div class="col-auto text-muted" v-if="i2cScan.bus">
+                  {{ $t("i2c_bus") }}: <code>{{ i2cScan.bus }}</code>
+                </div>
+              </div>
+
+              <div class="row margint10" v-if="i2cScanError">
+                <div class="alert alert-danger" role="alert">{{ $t("i2c_error") }}</div>
+              </div>
+
+              <table class="table" v-else-if="i2cScan.devices">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ $t("i2c_address") }}</th>
+                    <th scope="col">{{ $t("i2c_status") }}</th>
+                    <th scope="col">{{ $t("i2c_hint") }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="i2cScan.devices.length === 0">
+                    <td colspan="3" class="text-muted">{{ $t("i2c_empty") }}</td>
+                  </tr>
+                  <tr v-for="device in i2cScan.devices" :key="device.address">
+                    <td><code>{{ device.address }}</code></td>
+                    <td>
+                      <span class="badge" :class="i2cStatusBadgeClass(device.status)">
+                        {{ device.status === 'in_use' ? $t("i2c_status_inuse") : $t("i2c_status_detected") }}
+                      </span>
+                    </td>
+                    <td>
+                      <span v-if="i2cHintText(device)" class="text-muted fst-italic">{{ i2cHintText(device) }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
