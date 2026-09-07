@@ -47,6 +47,28 @@ export default {
     i2cScan: {} as any,
     i2cScanning: false,
     i2cScanError: false,
+    // Update tab: firmware/package version info, .deb upload state, and job
+    // status - the job is shared between the upload and the apt-install
+    // actions below since only one update job can run on the device at a
+    // time.
+    updateRunningVersion: '',
+    updateInstalledVersion: undefined as string | undefined,
+    updateFile: null as File | null,
+    updateUploading: false,
+    updateError: '',
+    updateJob: null as any,
+    updateJobTimer: null as any,
+    // apt (Debian package) section of the Update tab
+    aptRefreshing: false,
+    aptRefreshOutput: '',
+    aptRefreshError: '',
+    aptSearchQuery: '',
+    aptSearchResults: [] as any[],
+    aptSearching: false,
+    aptSearchError: '',
+    aptUpgradable: [] as any[],
+    aptUpgradableLoading: false,
+    aptUpgradableError: '',
     // Password visibility toggles for the various password fields below
     // (each field has its own show/hide eye-icon button in the template).
     showMQTTpass: false,
@@ -322,13 +344,221 @@ export default {
       const prefix = this.$t('i2c_hintprefix') as string;
       const module = modules[device.hint];
       return module ? `${prefix}: ${device.hint} (${module})?` : `${prefix}: ${device.hint}?`;
+    },
+
+    // Update tab -------------------------------------------------------
+
+    // Loads the running (currently executing) and dpkg-installed versions.
+    // installedVersion is omitted by the API if the smartpi package was
+    // never installed via dpkg.
+    fetchUpdateVersion: function () {
+      api.get('/update/version')
+      .then((response) => {
+        if ((response as any).isAxiosError) {
+          return;
+        }
+        this.updateRunningVersion = response.data.runningVersion;
+        this.updateInstalledVersion = response.data.installedVersion;
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+    },
+    // Called once when the tab is opened: loads version info, the current
+    // upgradable-package list, and checks whether a job is already running
+    // (e.g. started before this page was opened) so it can be picked up.
+    openUpdateTab: function () {
+      this.fetchUpdateVersion();
+      this.fetchUpdateUpgradable();
+      api.get('/update/status')
+      .then((response) => {
+        if ((response as any).isAxiosError) {
+          return;
+        }
+        this.updateJob = response.data;
+        if (this.updateJob.state === 'running') {
+          this.startUpdateJobPolling();
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+    },
+    // File input change handler - v-model doesn't work on <input type="file">.
+    onUpdateFileSelected: function (event: Event) {
+      const files = (event.target as HTMLInputElement).files;
+      this.updateFile = files && files.length > 0 ? files[0] : null;
+    },
+    // Uploads the selected .deb and, on success, starts polling the job it
+    // kicks off. A 409 means a job is already running (started elsewhere) -
+    // its message is shown, but polling is started anyway so that job's
+    // progress still shows up here.
+    uploadUpdatePackage: function () {
+      if (!this.updateFile) {
+        return;
+      }
+      this.updateUploading = true;
+      this.updateError = '';
+      const formData = new FormData();
+      formData.append('file', this.updateFile);
+      api.post('/update/package', formData)
+      .then((response) => {
+        this.updateUploading = false;
+        if ((response as any).isAxiosError) {
+          this.updateError = (response as any).response?.data?.message || (this.$t('update_upload_error') as string);
+          if ((response as any).response?.status === 409) {
+            this.startUpdateJobPolling();
+          }
+          return;
+        }
+        this.updateFile = null;
+        this.updateJob = response.data;
+        this.startUpdateJobPolling();
+      })
+      .catch((error) => {
+        console.log(error);
+        this.updateUploading = false;
+        this.updateError = this.$t('update_upload_error') as string;
+      });
+    },
+    // Polls /update/status every few seconds until the job is no longer
+    // running. A single failed request here is expected (e.g. the web
+    // server restarting mid-install of its own package) and not treated as
+    // an error - it's just picked up again on the next tick.
+    startUpdateJobPolling: function () {
+      if (this.updateJobTimer) {
+        return;
+      }
+      this.updateJobTimer = setInterval(() => {
+        api.get('/update/status')
+        .then((response) => {
+          if ((response as any).isAxiosError) {
+            return;
+          }
+          this.updateJob = response.data;
+          if (this.updateJob.state !== 'running') {
+            this.stopUpdateJobPolling();
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+      }, 2500);
+    },
+    stopUpdateJobPolling: function () {
+      if (this.updateJobTimer) {
+        clearInterval(this.updateJobTimer);
+        this.updateJobTimer = null;
+      }
+    },
+    // Maps a job state to a Bootstrap badge class.
+    updateJobBadgeClass: function (state: string) {
+      const classes: Record<string, string> = {
+        running: 'text-bg-primary',
+        succeeded: 'text-bg-success',
+        failed: 'text-bg-danger',
+      };
+      return classes[state] || 'text-bg-secondary';
+    },
+    // True while any update/install job is running - used to disable the
+    // upload and apt-install buttons, since only one job runs at a time.
+    isUpdateJobRunning: function () {
+      return !!this.updateJob && this.updateJob.state === 'running';
+    },
+
+    // apt (Debian package) section --------------------------------------
+
+    aptRefresh: function () {
+      this.aptRefreshing = true;
+      this.aptRefreshError = '';
+      api.post('/apt/refresh')
+      .then((response) => {
+        this.aptRefreshing = false;
+        if ((response as any).isAxiosError) {
+          this.aptRefreshError = (response as any).response?.data?.message || (this.$t('update_apt_refresh_error') as string);
+          return;
+        }
+        this.aptRefreshOutput = response.data.output;
+        this.fetchUpdateUpgradable();
+      })
+      .catch((error) => {
+        console.log(error);
+        this.aptRefreshing = false;
+        this.aptRefreshError = this.$t('update_apt_refresh_error') as string;
+      });
+    },
+    aptSearch: function () {
+      if (!this.aptSearchQuery.trim()) {
+        return;
+      }
+      this.aptSearching = true;
+      this.aptSearchError = '';
+      api.get('/apt/search', { params: { q: this.aptSearchQuery } })
+      .then((response) => {
+        this.aptSearching = false;
+        if ((response as any).isAxiosError) {
+          this.aptSearchError = (response as any).response?.data?.message || (this.$t('update_apt_search_error') as string);
+          return;
+        }
+        // A Go backend serializes a nil/empty slice as `null`, not `[]`.
+        this.aptSearchResults = response.data || [];
+      })
+      .catch((error) => {
+        console.log(error);
+        this.aptSearching = false;
+        this.aptSearchError = this.$t('update_apt_search_error') as string;
+      });
+    },
+    fetchUpdateUpgradable: function () {
+      this.aptUpgradableLoading = true;
+      this.aptUpgradableError = '';
+      api.get('/apt/upgradable')
+      .then((response) => {
+        this.aptUpgradableLoading = false;
+        if ((response as any).isAxiosError) {
+          this.aptUpgradableError = (response as any).response?.data?.message || (this.$t('update_apt_upgradable_error') as string);
+          return;
+        }
+        // A Go backend serializes a nil/empty slice as `null`, not `[]`.
+        this.aptUpgradable = response.data || [];
+      })
+      .catch((error) => {
+        console.log(error);
+        this.aptUpgradableLoading = false;
+        this.aptUpgradableError = this.$t('update_apt_upgradable_error') as string;
+      });
+    },
+    // Installs (or upgrades, when the package is already installed) a
+    // package by name, then polls the same job-status endpoint as the .deb
+    // upload above.
+    aptInstall: function (pkg: string, version: string = '') {
+      this.updateError = '';
+      api.post('/apt/install', { package: pkg, version: version })
+      .then((response) => {
+        if ((response as any).isAxiosError) {
+          this.updateError = (response as any).response?.data?.message || (this.$t('update_apt_install_error') as string);
+          if ((response as any).response?.status === 409) {
+            this.startUpdateJobPolling();
+          }
+          return;
+        }
+        this.updateJob = response.data;
+        this.startUpdateJobPolling();
+      })
+      .catch((error) => {
+        console.log(error);
+        this.updateError = this.$t('update_apt_install_error') as string;
+      });
     }
 
   },
   created() {
 
     this.fetchConfigdata();
-       
+
+  },
+  beforeUnmount() {
+    this.stopUpdateJobPolling();
   },
   setup() {
     const authStore = useAuthStore();
@@ -397,6 +627,9 @@ export default {
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="i2c-tab" data-bs-toggle="tab" data-bs-target="#i2c" type="button" role="tab" aria-controls="i2c" aria-selected="false" @click="scanI2c()">{{ $t("i2c") }}</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="update-tab" data-bs-toggle="tab" data-bs-target="#update" type="button" role="tab" aria-controls="update" aria-selected="false" @click="openUpdateTab()">{{ $t("update") }}</button>
           </li>
         </ul>
         <div class="tab-content w-100" id="settingsTabContent">
@@ -1664,6 +1897,140 @@ export default {
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div class="tab-pane fade w-100" id="update" role="tabpanel" aria-labelledby="update-tab">
+            <div class="container">
+              <div class="row margint10 align-items-center">
+                <h2>{{ $t("update") }}</h2>
+              </div>
+
+              <div class="row margint10">
+                <div class="col-auto">
+                  <strong>{{ $t("update_running_version") }}:</strong> {{ updateRunningVersion }}
+                </div>
+                <div class="col-auto">
+                  <strong>{{ $t("update_installed_version") }}:</strong> {{ updateInstalledVersion || $t("update_installed_version_none") }}
+                </div>
+              </div>
+
+              <div class="row margint10" v-if="updateError">
+                <div class="alert alert-danger" role="alert">{{ updateError }}</div>
+              </div>
+
+              <!-- Job status panel, shared by the .deb upload and the apt-install actions below (only one job runs at a time). -->
+              <div class="row margint10" v-if="updateJob && updateJob.startedAt">
+                <div class="col-12">
+                  <h5>
+                    {{ $t("update_job_status") }}
+                    <span class="badge" :class="updateJobBadgeClass(updateJob.state)">{{ updateJob.state }}</span>
+                  </h5>
+                  <p class="text-muted mb-1" v-if="updateJob.package">
+                    {{ updateJob.package }} {{ updateJob.previousVersion }} &rarr; {{ updateJob.targetVersion }}
+                  </p>
+                  <pre class="border rounded p-2" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">{{ updateJob.log }}</pre>
+                </div>
+              </div>
+
+              <hr>
+
+              <div class="row margint10 align-items-center">
+                <h4>{{ $t("update_upload_title") }}</h4>
+              </div>
+              <div class="row margint10 align-items-center">
+                <div class="col-auto">
+                  <input type="file" class="form-control" accept=".deb" @change="onUpdateFileSelected" :disabled="isUpdateJobRunning()">
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-outline-primary" :disabled="!updateFile || updateUploading || isUpdateJobRunning()" @click="uploadUpdatePackage()">
+                    {{ updateUploading ? $t("update_uploading") : $t("update_upload") }}
+                  </button>
+                </div>
+              </div>
+
+              <hr>
+
+              <div class="row margint10 align-items-center">
+                <h4>{{ $t("update_apt_title") }}</h4>
+              </div>
+
+              <div class="row margint10 align-items-center">
+                <div class="col-auto">
+                  <button type="button" class="btn btn-outline-primary" :disabled="aptRefreshing || isUpdateJobRunning()" @click="aptRefresh()">
+                    {{ aptRefreshing ? $t("update_apt_refreshing") : $t("update_apt_refresh") }}
+                  </button>
+                </div>
+              </div>
+              <div class="row margint10" v-if="aptRefreshError">
+                <div class="alert alert-danger" role="alert">{{ aptRefreshError }}</div>
+              </div>
+
+              <div class="row margint10 align-items-center">
+                <div class="col-4">
+                  <input type="text" class="form-control" :placeholder="$t('update_apt_search_placeholder')" v-model="aptSearchQuery" @keyup.enter="aptSearch()">
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-outline-primary" :disabled="aptSearching" @click="aptSearch()">
+                    {{ aptSearching ? $t("update_apt_searching") : $t("update_apt_search") }}
+                  </button>
+                </div>
+              </div>
+              <div class="row margint10" v-if="aptSearchError">
+                <div class="alert alert-danger" role="alert">{{ aptSearchError }}</div>
+              </div>
+              <table class="table" v-if="aptSearchResults.length > 0">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ $t("update_apt_name") }}</th>
+                    <th scope="col">{{ $t("update_apt_description") }}</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="pkg in aptSearchResults" :key="pkg.name">
+                    <td>{{ pkg.name }}</td>
+                    <td>{{ pkg.description }}</td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-primary" :disabled="isUpdateJobRunning()" @click="aptInstall(pkg.name)">{{ $t("update_apt_install") }}</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="row margint10 align-items-center">
+                <h5>{{ $t("update_apt_upgradable_title") }}</h5>
+              </div>
+              <div class="row margint10" v-if="aptUpgradableError">
+                <div class="alert alert-danger" role="alert">{{ aptUpgradableError }}</div>
+              </div>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ $t("update_apt_name") }}</th>
+                    <th scope="col">{{ $t("update_apt_currentversion") }}</th>
+                    <th scope="col">{{ $t("update_apt_newversion") }}</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="aptUpgradableLoading">
+                    <td colspan="4" class="text-muted">{{ $t("update_apt_upgradable_loading") }}</td>
+                  </tr>
+                  <tr v-else-if="aptUpgradable.length === 0 && !aptUpgradableError">
+                    <td colspan="4" class="text-muted">{{ $t("update_apt_upgradable_empty") }}</td>
+                  </tr>
+                  <tr v-for="pkg in aptUpgradable" :key="pkg.name">
+                    <td>{{ pkg.name }}</td>
+                    <td>{{ pkg.currentVersion }}</td>
+                    <td>{{ pkg.newVersion }}</td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-primary" :disabled="isUpdateJobRunning()" @click="aptInstall(pkg.name, pkg.newVersion)">{{ $t("update_apt_install") }}</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
             </div>
           </div>
 
