@@ -180,5 +180,7 @@
     "update_apt_upgradable_title": "Available updates",
     "update_apt_upgradable_empty": "No updates available.",
     "update_apt_upgradable_loading": "Loading…",
-    "update_apt_upgradable_error": "Could not load available updates."
+    "update_apt_upgradable_error": "Could not load available updates.",
+    "update_apt_upgrade_all": "Upgrade all",
+    "update_apt_upgrade_all_error": "Upgrade failed."
 }

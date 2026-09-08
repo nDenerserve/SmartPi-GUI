@@ -549,6 +549,27 @@ export default {
         console.log(error);
         this.updateError = this.$t('update_apt_install_error') as string;
       });
+    },
+    // Upgrades every package listed in aptUpgradable in one apt-get run,
+    // then polls the same job-status endpoint as aptInstall above.
+    aptUpgradeAll: function () {
+      this.updateError = '';
+      api.post('/apt/upgrade-all')
+      .then((response) => {
+        if ((response as any).isAxiosError) {
+          this.updateError = (response as any).response?.data?.message || (this.$t('update_apt_upgrade_all_error') as string);
+          if ((response as any).response?.status === 409) {
+            this.startUpdateJobPolling();
+          }
+          return;
+        }
+        this.updateJob = response.data;
+        this.startUpdateJobPolling();
+      })
+      .catch((error) => {
+        console.log(error);
+        this.updateError = this.$t('update_apt_upgrade_all_error') as string;
+      });
     }
 
   },
@@ -1929,6 +1950,9 @@ export default {
                   <p class="text-muted mb-1" v-if="updateJob.package">
                     {{ updateJob.package }} {{ updateJob.previousVersion }} &rarr; {{ updateJob.targetVersion }}
                   </p>
+                  <p class="text-muted mb-1" v-else-if="updateJob.packages && updateJob.packages.length">
+                    {{ updateJob.packages.join(', ') }}
+                  </p>
                   <pre class="border rounded p-2" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">{{ updateJob.log }}</pre>
                 </div>
               </div>
@@ -1999,7 +2023,14 @@ export default {
               </table>
 
               <div class="row margint10 align-items-center">
-                <h5>{{ $t("update_apt_upgradable_title") }}</h5>
+                <div class="col-auto">
+                  <h5 class="mb-0">{{ $t("update_apt_upgradable_title") }}</h5>
+                </div>
+                <div class="col-auto" v-if="aptUpgradable.length > 0">
+                  <button type="button" class="btn btn-outline-primary btn-sm" :disabled="isUpdateJobRunning()" @click="aptUpgradeAll()">
+                    {{ $t("update_apt_upgrade_all") }}
+                  </button>
+                </div>
               </div>
               <div class="row margint10" v-if="aptUpgradableError">
                 <div class="alert alert-danger" role="alert">{{ aptUpgradableError }}</div>
