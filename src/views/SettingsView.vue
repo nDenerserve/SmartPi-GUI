@@ -436,7 +436,7 @@ export default {
             return;
           }
           this.updateJob = response.data;
-          if (this.updateJob.state !== 'running') {
+          if (this.updateJob.state === 'succeeded' || this.updateJob.state === 'failed') {
             this.stopUpdateJobPolling();
           }
         })
