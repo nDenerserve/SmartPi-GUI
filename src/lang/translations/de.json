@@ -180,5 +180,7 @@
     "update_apt_upgradable_title": "Verfügbare Updates",
     "update_apt_upgradable_empty": "Keine Updates verfügbar.",
     "update_apt_upgradable_loading": "Lädt…",
-    "update_apt_upgradable_error": "Verfügbare Updates konnten nicht geladen werden."
+    "update_apt_upgradable_error": "Verfügbare Updates konnten nicht geladen werden.",
+    "update_apt_upgrade_all": "Alle upgraden",
+    "update_apt_upgrade_all_error": "Upgrade fehlgeschlagen."
   }
