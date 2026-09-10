@@ -575,7 +575,12 @@ export default {
   },
   created() {
 
-    this.fetchConfigdata();
+    // Skip when setup() already bounced us to /login for lacking a token -
+    // otherwise this fires an unauthenticated request that 401s and races
+    // the redirect above with a second one that doesn't remember the path.
+    if (this.loggedIn) {
+      this.fetchConfigdata();
+    }
 
   },
   beforeUnmount() {
@@ -590,12 +595,13 @@ export default {
     // note in helpers/router.ts for why that's not handled centrally.
     if (!authStore.token) {
         authStore.redirectToLoginWithPath(route.path);
-        return;
+        return { loggedIn: false };
     }
 
     return {
      route,
-      useDateFormat
+      useDateFormat,
+      loggedIn: true
     }
   },
     mounted() {

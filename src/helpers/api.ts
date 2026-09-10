@@ -12,7 +12,7 @@ import { useAuthStore } from '../stores/auth';
  */
 const config = {
   baseURL: 'http://'+window.location.hostname+':1080/api/v1',
-  // baseURL: 'http://10.30.0.70:1080/api/v1', // for testing
+  // baseURL: 'http://10.30.0.71:1080/api/v1', // for testing
   // baseURL: 'http://10.1.0.249:1080/api/v1', // for testing
   // headers: {
   //   common: {
@@ -58,17 +58,20 @@ api.interceptors.request.use(authInterceptor)
 /**
  * Adding the response interceptors.
  * On a 401 (expired/invalid token) this clears the session and sends the
- * user back to /login. Note the error handler *resolves* with `error`
- * instead of re-throwing it, so callers' `.catch()` blocks never fire for
- * failed requests - callers only see a rejected/resolved promise carrying
- * the Axios error object as its value, not a `try/catch` and not a rejection.
+ * user back to /login, remembering the page they were on (via the same
+ * `?redirect=` mechanism SettingsView uses) so login sends them back
+ * instead of always landing on the dashboard. Note the error handler
+ * *resolves* with `error` instead of re-throwing it, so callers' `.catch()`
+ * blocks never fire for failed requests - callers only see a
+ * rejected/resolved promise carrying the Axios error object as its value,
+ * not a `try/catch` and not a rejection.
  */
 api.interceptors.response.use(response => {
    return response;
 }, error => {
   if (error.response.status === 401) {
    //place your reentry code
-   useAuthStore().logout();
+   useAuthStore().redirectToLoginWithPath(window.location.pathname);
   }
   return error;
 });
