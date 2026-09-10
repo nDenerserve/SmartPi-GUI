@@ -5,10 +5,18 @@
   same component, this is just how the file happened to evolve.
 -->
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../stores/auth';
 import { loadScript } from "vue-plugin-load-script"; // currently unused in this file
 
 const authStore = useAuthStore();
+
+const { locale, availableLocales } = useI18n();
+
+function setLocale(lang: string) {
+    locale.value = lang;
+    localStorage.setItem('locale', lang);
+}
 
 // Links to the other services that run alongside the SmartPi GUI on the
 // same device, each on its own port. Built from window.location.hostname
@@ -61,6 +69,11 @@ export default {
             <div id="header_toggle-1" class="header_toggle"><i class="icon-menu" id="header-toggle"
                 @click="toggleSidemenu"></i></div>
             <!-- <div class="header_img"><img src="assets/img/hczKIze.jpg"></div> -->
+            <div class="lang-switch">
+                <a v-for="lang in availableLocales" :key="lang" href="#"
+                    :class="{ active: locale === lang }"
+                    @click.prevent="setLocale(lang)">{{ lang.toUpperCase() }}</a>
+            </div>
         </header>
         <div id="nav-bar" class="l-navbar">
             <nav class="l-nav">
@@ -112,3 +125,21 @@ export default {
         </div>
     </div>
 </template>
+
+<style scoped>
+.lang-switch {
+    display: flex;
+    gap: .5rem;
+}
+
+.lang-switch a {
+    color: var(--first-color-light);
+    font-size: .85rem;
+    font-weight: 700;
+    opacity: .5;
+}
+
+.lang-switch a.active {
+    opacity: 1;
+}
+</style>

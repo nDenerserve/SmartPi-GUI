@@ -27,6 +27,23 @@ pinia.use(({ store }) => {
   store.router = markRaw(router)
 })
 
+const availableLocales = ["en", "de"];
+
+// Explicit user choice (once a language switcher writes it) wins; otherwise
+// match the browser's preferred languages against what we ship, falling
+// back to German (the app's original default) if none match.
+function resolveLocale(): string {
+  const stored = localStorage.getItem("locale");
+  if (stored && availableLocales.includes(stored)) return stored;
+
+  for (const lang of navigator.languages ?? [navigator.language]) {
+    const primary = lang.split("-")[0].toLowerCase();
+    if (availableLocales.includes(primary)) return primary;
+  }
+
+  return "de";
+}
+
 // `legacy: false` + `globalInjection: true` means every component gets
 // `this.$t`/`this.$i18n` bound to the Composition API instance (a Composer),
 // not the legacy VueI18n instance - see the module augmentation in
@@ -34,9 +51,9 @@ pinia.use(({ store }) => {
 const i18n = createI18n({
   legacy: false,
   globalInjection: true,
-  locale: "de",
+  locale: resolveLocale(),
   fallbackLocale: "en",
-  availableLocales: ["en", "de"],
+  availableLocales: availableLocales,
   messages: messages,
 });
 
