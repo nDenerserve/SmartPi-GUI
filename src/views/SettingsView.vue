@@ -74,7 +74,24 @@ export default {
     showMQTTpass: false,
     showSmartpicloudMQTTpass: false,
     showFTPpass: false,
-    showInfluxpassword: false
+    showInfluxpassword: false,
+    // Users tab: the local Linux account list, plus the inline "create
+    // user" form's state (same open/close-toggle idiom as the network and
+    // API tokens tabs), and per-username state for the inline "change
+    // password" form each row carries.
+    users: [] as any[],
+    showCreateUser: false,
+    newUsername: '',
+    newUserPassword: '',
+    newUserPasswordConfirm: '',
+    showNewUserPassword: false,
+    createUserError: '',
+    changePasswordOpen: {} as Record<string, boolean>,
+    changePasswordValue: {} as Record<string, string>,
+    changePasswordConfirm: {} as Record<string, string>,
+    changePasswordVisible: {} as Record<string, boolean>,
+    changePasswordError: {} as Record<string, string>,
+    changePasswordSuccess: {} as Record<string, string>
   }),
   methods: {
 
@@ -283,6 +300,112 @@ export default {
     // colon can't be part of an i18n key, so it is stripped for the lookup.
     scopeLabel: function (scope: string) {
       return this.$t('scope_' + scope.replace(':', ''));
+    },
+
+    // Users tab -----------------------------------------------------------
+
+    // Loads the local account list. Called when the tab is opened rather
+    // than eagerly on mount, same lazy pattern as the network/tokens tabs.
+    fetchUsers: function () {
+      api.get('/users')
+      .then((response) => {
+        if ((response as any).isAxiosError) {
+          return;
+        }
+        this.users = response.data || [];
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+    },
+    // Creates a new local Linux account with the entered username/password,
+    // then reloads the list so it shows up immediately.
+    createUser: function () {
+      this.createUserError = '';
+      if (!this.newUsername || !this.newUserPassword) {
+        return;
+      }
+      if (this.newUserPassword !== this.newUserPasswordConfirm) {
+        this.createUserError = this.$t('users_passwordmismatch') as string;
+        return;
+      }
+      api.post('/users', { username: this.newUsername, password: this.newUserPassword })
+      .then((response) => {
+        if ((response as any).isAxiosError) {
+          this.createUserError = (response as any).response?.data?.message || (this.$t('users_createerror') as string);
+          return;
+        }
+        this.newUsername = '';
+        this.newUserPassword = '';
+        this.newUserPasswordConfirm = '';
+        this.showCreateUser = false;
+        this.fetchUsers();
+      })
+      .catch((error) => {
+        console.log(error);
+        this.createUserError = this.$t('users_createerror') as string;
+      });
+    },
+    // Opens/closes a given user row's inline "change password" form,
+    // clearing any previous error/success message from a prior attempt.
+    toggleChangePassword: function (username: string) {
+      this.changePasswordOpen[username] = !this.changePasswordOpen[username];
+      this.changePasswordError[username] = '';
+      this.changePasswordSuccess[username] = '';
+    },
+    // Sets a new password for the given local account - used both for the
+    // logged-in user's own account and for any other listed account, there
+    // is no separate "admin" capability in this app (see ChangeUserPassword
+    // in the Go backend for why that's an intentional, not missing, check).
+    changeUserPassword: function (username: string) {
+      this.changePasswordError[username] = '';
+      this.changePasswordSuccess[username] = '';
+      const newPassword = this.changePasswordValue[username];
+      if (!newPassword) {
+        return;
+      }
+      if (newPassword !== this.changePasswordConfirm[username]) {
+        this.changePasswordError[username] = this.$t('users_passwordmismatch') as string;
+        return;
+      }
+      api.post(`/users/${username}/password`, { password: newPassword })
+      .then((response) => {
+        if ((response as any).isAxiosError) {
+          this.changePasswordError[username] = (response as any).response?.data?.message || (this.$t('error_change_password') as string);
+          return;
+        }
+        this.changePasswordValue[username] = '';
+        this.changePasswordConfirm[username] = '';
+        this.changePasswordSuccess[username] = this.$t('success_change_password') as string;
+      })
+      .catch((error) => {
+        console.log(error);
+        this.changePasswordError[username] = this.$t('error_change_password') as string;
+      });
+    },
+
+    // FTP tab: upload schedule ---------------------------------------------
+
+    // Marks every hour as an upload time - the "hourly" quick choice next
+    // to the per-hour checkboxes.
+    setFtpHourly: function () {
+      if (!this.smartpiConfiguration.FTPsendtimes) {
+        return;
+      }
+      for (let h = 0; h < 24; h++) {
+        this.smartpiConfiguration.FTPsendtimes[h] = true;
+      }
+      this.saveChange();
+    },
+    // Clears every hour - the counterpart to setFtpHourly() above.
+    clearFtpHours: function () {
+      if (!this.smartpiConfiguration.FTPsendtimes) {
+        return;
+      }
+      for (let h = 0; h < 24; h++) {
+        this.smartpiConfiguration.FTPsendtimes[h] = false;
+      }
+      this.saveChange();
     },
 
     // Scans the configured I2C bus for occupied addresses. Called when the
@@ -648,6 +771,9 @@ export default {
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="networksettings-tab" data-bs-toggle="tab" data-bs-target="#networksettings" type="button" role="tab" aria-controls="networksettings" aria-selected="false" @click="loadNetworkConfig()">{{ $t("networksettings") }} ({{ $t("betatest") }})</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="false" @click="fetchUsers()">{{ $t("users") }}</button>
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="apitokens-tab" data-bs-toggle="tab" data-bs-target="#apitokens" type="button" role="tab" aria-controls="apitokens" aria-selected="false" @click="fetchDeviceTokens()">{{ $t("apitokens") }}</button>
@@ -1385,12 +1511,36 @@ export default {
                     <input type="text" class="form-control" aria-describedby="csv-decimal-divider" v-model="smartpiConfiguration.CSVdecimalpoint" @input="saveChange">
                   </div>
                 </div>
-                <div class="col-4">         
+                <div class="col-4">
                   <div class="input-group mb-3">
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="csv-time-format">{{ $t("csvtimeformat") }}</span>
                     </div>
                     <input type="text" class="form-control" aria-describedby="csv-time-format" v-model="smartpiConfiguration.CSVtimeformat" @input="saveChange">
+                  </div>
+                </div>
+              </div>
+              <div class="row margint20">
+                <div class="col-12">
+                  <label style="font-size: 1.1rem">{{ $t("ftp_schedule") }}</label>
+                </div>
+                <div class="col-12 text-muted">
+                  {{ $t("ftp_schedule_hint") }}
+                </div>
+              </div>
+              <div class="row margint10 align-items-center">
+                <div class="col-auto">
+                  <button type="button" class="btn btn-outline-primary btn-sm" @click="setFtpHourly()">{{ $t("ftp_schedule_hourly") }}</button>
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" @click="clearFtpHours()">{{ $t("ftp_schedule_none") }}</button>
+                </div>
+              </div>
+              <div class="row margint10" v-if="smartpiConfiguration.FTPsendtimes">
+                <div class="col-12 d-flex flex-wrap">
+                  <div class="form-check form-check-inline" v-for="h in 24" :key="h - 1">
+                    <input class="form-check-input" type="checkbox" :id="'ftpsendtime-' + (h - 1)" v-model="smartpiConfiguration.FTPsendtimes[h - 1]" @change="saveChange">
+                    <label class="form-check-label" :for="'ftpsendtime-' + (h - 1)">{{ String(h - 1).padStart(2, '0') }}:00</label>
                   </div>
                 </div>
               </div>
@@ -1807,6 +1957,107 @@ export default {
                it is valid until deleted here, which is the only way to
                revoke it (see TokenVerifyMiddleWare on the server, which
                checks the token store on every request). -->
+          <div class="tab-pane fade w-100" id="users" role="tabpanel" aria-labelledby="users-tab">
+            <div class="container">
+              <div class="row margint10 align-items-center">
+                <h2>{{ $t("users") }}</h2>
+              </div>
+              <div class="row margint10">
+                <p>{{ $t("users_intro") }}</p>
+              </div>
+
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ $t("users_username") }}</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="users.length === 0">
+                    <td colspan="2" class="text-muted">{{ $t("users_empty") }}</td>
+                  </tr>
+                  <template v-for="user in users" :key="user.username">
+                    <tr>
+                      <td>{{ user.username }}</td>
+                      <td>
+                        <a class="l-nav_link marginb0 paddingt0" href="#" @click="toggleChangePassword(user.username)">{{ $t("users_changepassword") }}</a>
+                      </td>
+                    </tr>
+                    <tr v-if="changePasswordOpen[user.username]">
+                      <td colspan="2">
+                        <div class="row align-items-center">
+                          <div class="col-3">
+                            <div class="input-group mb-3">
+                              <div class="input-group-prepend">
+                                <span class="input-group-text">{{ $t("users_newpassword") }}</span>
+                              </div>
+                              <input :type="changePasswordVisible[user.username] ? 'text' : 'password'" class="form-control" v-model="changePasswordValue[user.username]">
+                            </div>
+                          </div>
+                          <div class="col-3">
+                            <div class="input-group mb-3">
+                              <div class="input-group-prepend">
+                                <span class="input-group-text">{{ $t("users_confirmpassword") }}</span>
+                              </div>
+                              <input :type="changePasswordVisible[user.username] ? 'text' : 'password'" class="form-control" v-model="changePasswordConfirm[user.username]">
+                              <button class="btn btn-outline-secondary" type="button" @click="changePasswordVisible[user.username] = !changePasswordVisible[user.username]" tabindex="-1">
+                                <svg v-if="!changePasswordVisible[user.username]" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
+                              </button>
+                            </div>
+                          </div>
+                          <div class="col-1">
+                            <a class="l-nav_link marginb0" href="#" @click="changeUserPassword(user.username)"><i class="icon-save"></i></a>
+                          </div>
+                          <div class="col-5" v-if="changePasswordError[user.username] || changePasswordSuccess[user.username]">
+                            <span v-if="changePasswordError[user.username]" class="text-danger">{{ changePasswordError[user.username] }}</span>
+                            <span v-else class="text-success">{{ changePasswordSuccess[user.username] }}</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+
+              <!-- Inline "create user" form, same open/close-toggle idiom as
+                   the API tokens tab's "create token" form. -->
+              <div class="row align-items-center">
+                <div class="col-1">
+                  <a class="l-nav_link marginb0 paddingt0" href="#" @click="showCreateUser = !showCreateUser"><i class="icon-plus"></i></a>
+                </div>
+              </div>
+
+              <div class="row marginr0 marginl0" v-if="showCreateUser">
+                <div class="row margint10 align-items-center">
+                  <div class="col-3">
+                    <input type="text" class="form-control" :placeholder="$t('users_username')" v-model="newUsername" aria-label="new-username">
+                  </div>
+                  <div class="col-3">
+                    <div class="input-group">
+                      <input :type="showNewUserPassword ? 'text' : 'password'" class="form-control" :placeholder="$t('users_newpassword')" v-model="newUserPassword" aria-label="new-user-password">
+                      <button class="btn btn-outline-secondary" type="button" @click="showNewUserPassword = !showNewUserPassword" tabindex="-1">
+                        <svg v-if="!showNewUserPassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-3">
+                    <input :type="showNewUserPassword ? 'text' : 'password'" class="form-control" :placeholder="$t('users_confirmpassword')" v-model="newUserPasswordConfirm" aria-label="new-user-password-confirm">
+                  </div>
+                  <div class="col-1">
+                    <a class="l-nav_link marginb0" href="#" @click="createUser()"><i class="icon-save"></i></a>
+                  </div>
+                </div>
+                <div class="row" v-if="createUserError">
+                  <div class="col-9 text-danger">{{ createUserError }}</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
           <div class="tab-pane fade w-100" id="apitokens" role="tabpanel" aria-labelledby="apitokens-tab">
             <div class="container">
               <div class="row margint10 align-items-center">

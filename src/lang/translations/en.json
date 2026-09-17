@@ -182,5 +182,19 @@
     "update_apt_upgradable_loading": "Loading…",
     "update_apt_upgradable_error": "Could not load available updates.",
     "update_apt_upgrade_all": "Upgrade all",
-    "update_apt_upgrade_all_error": "Upgrade failed."
+    "update_apt_upgrade_all_error": "Upgrade failed.",
+    "users": "Users",
+    "users_intro": "Local user accounts on this SmartPi. These accounts are used to log in to the web interface.",
+    "users_username": "Username",
+    "users_newpassword": "New password",
+    "users_confirmpassword": "Confirm password",
+    "users_changepassword": "Change password",
+    "users_createuser": "Create user",
+    "users_passwordmismatch": "Passwords do not match.",
+    "users_createerror": "User could not be created.",
+    "users_empty": "No users found.",
+    "ftp_schedule": "Upload schedule",
+    "ftp_schedule_hint": "The full hours at which an upload should happen. Hourly, or up to 12 fixed times a day, are sensible choices.",
+    "ftp_schedule_hourly": "Hourly",
+    "ftp_schedule_none": "None"
 }

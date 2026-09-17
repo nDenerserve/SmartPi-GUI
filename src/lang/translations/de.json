@@ -182,5 +182,19 @@
     "update_apt_upgradable_loading": "Lädt…",
     "update_apt_upgradable_error": "Verfügbare Updates konnten nicht geladen werden.",
     "update_apt_upgrade_all": "Alle upgraden",
-    "update_apt_upgrade_all_error": "Upgrade fehlgeschlagen."
+    "update_apt_upgrade_all_error": "Upgrade fehlgeschlagen.",
+    "users": "Benutzer",
+    "users_intro": "Lokale Benutzerkonten dieses SmartPi. Mit diesen Konten meldet man sich an der Weboberfläche an.",
+    "users_username": "Benutzername",
+    "users_newpassword": "Neues Passwort",
+    "users_confirmpassword": "Passwort bestätigen",
+    "users_changepassword": "Passwort ändern",
+    "users_createuser": "Benutzer anlegen",
+    "users_passwordmismatch": "Die Passwörter stimmen nicht überein.",
+    "users_createerror": "Benutzer konnte nicht angelegt werden.",
+    "users_empty": "Keine Benutzer gefunden.",
+    "ftp_schedule": "Zeitpunkt des Uploads",
+    "ftp_schedule_hint": "Zu welchen vollen Stunden hochgeladen werden soll. Sinnvoll sind stündlich oder bis zu 12 feste Uhrzeiten am Tag.",
+    "ftp_schedule_hourly": "Stündlich",
+    "ftp_schedule_none": "Keine"
   }
