@@ -1536,12 +1536,19 @@ export default {
                   <button type="button" class="btn btn-outline-secondary btn-sm" @click="clearFtpHours()">{{ $t("ftp_schedule_none") }}</button>
                 </div>
               </div>
-              <div class="row margint10" v-if="smartpiConfiguration.FTPsendtimes">
-                <div class="col-12 d-flex flex-wrap">
-                  <div class="form-check form-check-inline" v-for="h in 24" :key="h - 1">
-                    <input class="form-check-input" type="checkbox" :id="'ftpsendtime-' + (h - 1)" v-model="smartpiConfiguration.FTPsendtimes[h - 1]" @change="saveChange">
-                    <label class="form-check-label" :for="'ftpsendtime-' + (h - 1)">{{ String(h - 1).padStart(2, '0') }}:00</label>
-                  </div>
+              <!-- Two aligned rows of 12 hours each (00:00-11:00, then 12:00-23:00),
+                   so hour h and hour h+12 sit in the same column, one above the
+                   other - easier to scan than one long wrapped list. -->
+              <div class="row margint10 text-center g-0" v-if="smartpiConfiguration.FTPsendtimes">
+                <div class="col-1" v-for="h in 12" :key="'ftpsendtime-' + (h - 1)">
+                  <label class="form-check-label d-block small" :for="'ftpsendtime-' + (h - 1)">{{ String(h - 1).padStart(2, '0') }}:00</label>
+                  <input class="form-check-input" type="checkbox" :id="'ftpsendtime-' + (h - 1)" v-model="smartpiConfiguration.FTPsendtimes[h - 1]" @change="saveChange">
+                </div>
+              </div>
+              <div class="row margint10 text-center g-0" v-if="smartpiConfiguration.FTPsendtimes">
+                <div class="col-1" v-for="h in 12" :key="'ftpsendtime-' + (h + 11)">
+                  <label class="form-check-label d-block small" :for="'ftpsendtime-' + (h + 11)">{{ String(h + 11).padStart(2, '0') }}:00</label>
+                  <input class="form-check-input" type="checkbox" :id="'ftpsendtime-' + (h + 11)" v-model="smartpiConfiguration.FTPsendtimes[h + 11]" @change="saveChange">
                 </div>
               </div>
             </div>
