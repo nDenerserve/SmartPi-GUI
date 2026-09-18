@@ -207,7 +207,7 @@ export default {
       console.log(connectionName);
       console.log(this.newIpAddress);
       
-      api.get(`/config/network/addstaticiptoconnection/ip/${this.newIpAddress}/cidrsuffix/${this.newCIDRSuffix}/connection/${connectionName}`)
+      api.post(`/config/network/addstaticiptoconnection/ip/${this.newIpAddress}/cidrsuffix/${this.newCIDRSuffix}/connection/${connectionName}`)
       .then( (response) => {
         console.log(response);
         this.networkConnections = response.data;
@@ -227,7 +227,7 @@ export default {
       console.log(ipaddress);
       console.log(cidrsuffix);
       
-      api.get(`/config/network/removestaticipfromconnection/ip/${ipaddress}/cidrsuffix/${cidrsuffix}/connection/${connectionName}`)
+      api.post(`/config/network/removestaticipfromconnection/ip/${ipaddress}/cidrsuffix/${cidrsuffix}/connection/${connectionName}`)
       .then( (response) => {
         console.log(response);
         this.networkConnections = response.data;
