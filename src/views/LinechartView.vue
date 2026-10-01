@@ -10,6 +10,35 @@ import { format, formatDistance, formatRelative, subDays, subMonths, subYears, s
 
 import MainNavigation from '@/components/MainNavigation.vue';
 
+const HIDDEN_FIELDS_STORAGE_KEY = 'linechartHiddenFields';
+
+// Fields the user has toggled off via the legend, persisted across reloads.
+function getHiddenFields(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_FIELDS_STORAGE_KEY) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHiddenField(field: string, hidden: boolean) {
+  const hiddenFields = getHiddenFields();
+  const index = hiddenFields.indexOf(field);
+  if (hidden && index === -1) {
+    hiddenFields.push(field);
+  } else if (!hidden && index !== -1) {
+    hiddenFields.splice(index, 1);
+  } else {
+    return;
+  }
+  try {
+    localStorage.setItem(HIDDEN_FIELDS_STORAGE_KEY, JSON.stringify(hiddenFields));
+  } catch (e) {
+    // localStorage unavailable (e.g. private browsing) - selection just
+    // won't persist across reloads.
+  }
+}
+
 
 import { Chart as ChartJS, Title, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, LineController, LineElement, PointElement, TimeScale, registerables, type ChartOptions } from 'chart.js'
 
@@ -40,6 +69,28 @@ export default {
       tension: 0.2,
       responsive: true,
       maintainAspectRatio: true,
+      // Persist which series are toggled off via the legend across reloads
+      // (localStorage, keyed by measurement field name) by replicating
+      // Chart.js's default legend onClick behaviour and additionally saving
+      // the resulting hidden/shown state. The saved state is read back in
+      // fetchLinechartdata(), which sets each dataset's initial `hidden`
+      // flag from it.
+      plugins: {
+        legend: {
+          onClick: (evt: unknown, legendItem: any, legend: any) => {
+            const index = legendItem.datasetIndex;
+            const ci = legend.chart;
+            if (ci.isDatasetVisible(index)) {
+              ci.hide(index);
+              legendItem.hidden = true;
+            } else {
+              ci.show(index);
+              legendItem.hidden = false;
+            }
+            saveHiddenField(legendItem.text, legendItem.hidden);
+          },
+        },
+      },
       // yP/yU/yI/yF/yCosPhi below are matched up with dataset.yAxisID values
       // assigned per measurement field in fetchLinechartdata()'s color/axis
       // switch further down.
@@ -191,6 +242,7 @@ export default {
 
             linechartlabels = []
 
+            const hiddenFields = getHiddenFields();
 
             for (let i = 0; i < progressdata.length; i++) {
 
@@ -374,7 +426,8 @@ export default {
                 borderColor: lineColor,
                 backgroundColor: lineColor,
                 data: lineData,
-                yAxisID: yAxis
+                yAxisID: yAxis,
+                hidden: hiddenFields.includes(progressdata[i].field)
             })
 
             console.log(lineChartDataDatasets[i])
