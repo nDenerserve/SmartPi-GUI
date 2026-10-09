@@ -8,6 +8,11 @@ import { format, formatDistance, formatRelative, subDays, subMonths, subYears, a
 
 import MainNavigation from '@/components/MainNavigation.vue';
 
+// The device never sends stored passwords and tokens; it returns this mask
+// instead and keeps the stored value when the mask is sent back (see
+// SecretMask in smartpi/config).
+const SECRET_MASK = '********';
+
 
 // Device configuration page: a tabbed form (measurements, MQTT, SmartPi
 // Cloud, FTP, Modbus, energy-meter protocol, database/InfluxDB, base
@@ -75,6 +80,9 @@ export default {
     showSmartpicloudMQTTpass: false,
     showFTPpass: false,
     showInfluxpassword: false,
+    // name of the secret field whose mask was removed for typing (see
+    // secretFocus/secretBlur)
+    maskedSecret: '',
     // Users tab: the local Linux account list, plus the inline "create
     // user" form's state (same open/close-toggle idiom as the network and
     // API tokens tabs), and per-username state for the inline "change
@@ -137,9 +145,26 @@ export default {
     },
     // Same as saveACChange() above, but for smartpiConfiguration (the
     // general/service config: MQTT, cloud, FTP, database, base settings).
+    // A secret field shows the mask; it is emptied for typing and the mask
+    // is put back if nothing was typed, so the stored value stays. Typing
+    // (even deleting everything) replaces the stored value.
+    secretFocus: function (field: string) {
+      if (this.smartpiConfiguration[field] === SECRET_MASK) {
+        this.smartpiConfiguration[field] = '';
+        this.maskedSecret = field;
+      }
+    },
+    secretBlur: function (field: string) {
+      if (this.maskedSecret === field && this.smartpiConfiguration[field] === '') {
+        this.smartpiConfiguration[field] = SECRET_MASK;
+      }
+      this.maskedSecret = '';
+    },
+    secretInput: function () {
+      this.maskedSecret = '';
+      this.saveChange();
+    },
     saveChange: function () {
-      console.log("Save Config");
-      console.log(this.smartpiConfiguration);
       api.post('/config/writesmartpiconfiguration',{"type": "config", "msg": this.smartpiConfiguration })
       .then(function (response) {
         console.log(response);
@@ -712,7 +737,6 @@ export default {
   setup() {
     const authStore = useAuthStore();
     const route = useRoute();
-    console.log(authStore.token);
     // Unlike the other views (dashboard, line/energy chart, export), this
     // is the one place in the app that actively enforces login - see the
     // note in helpers/router.ts for why that's not handled centrally.
@@ -1301,7 +1325,7 @@ export default {
                          flag) for every password field on this page: an inline
                          eye/eye-slash SVG button flips the input's type between
                          "password" and "text". -->
-                    <input :type="showMQTTpass ? 'text' : 'password'" class="form-control" aria-describedby="mqtt-password" v-model="smartpiConfiguration.MQTTpass" @input="saveChange">
+                    <input :type="showMQTTpass ? 'text' : 'password'" class="form-control" aria-describedby="mqtt-password" v-model="smartpiConfiguration.MQTTpass" @focus="secretFocus('MQTTpass')" @blur="secretBlur('MQTTpass')" @input="secretInput">
                     <button class="btn btn-outline-secondary" type="button" @click="showMQTTpass = !showMQTTpass" tabindex="-1">
                       <svg v-if="!showMQTTpass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
                       <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
@@ -1390,7 +1414,7 @@ export default {
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="smartpicloud-password">{{ $t("password") }}</span>
                     </div>
-                    <input :type="showSmartpicloudMQTTpass ? 'text' : 'password'" class="form-control" aria-describedby="smartpicloud-password" v-model="smartpiConfiguration.SmartpicloudMQTTpass" @input="saveChange">
+                    <input :type="showSmartpicloudMQTTpass ? 'text' : 'password'" class="form-control" aria-describedby="smartpicloud-password" v-model="smartpiConfiguration.SmartpicloudMQTTpass" @focus="secretFocus('SmartpicloudMQTTpass')" @blur="secretBlur('SmartpicloudMQTTpass')" @input="secretInput">
                     <button class="btn btn-outline-secondary" type="button" @click="showSmartpicloudMQTTpass = !showSmartpicloudMQTTpass" tabindex="-1">
                       <svg v-if="!showSmartpicloudMQTTpass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
                       <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
@@ -1466,7 +1490,7 @@ export default {
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="ftp-password">{{ $t("password") }}</span>
                     </div>
-                    <input :type="showFTPpass ? 'text' : 'password'" class="form-control" aria-describedby="ftp-password" v-model="smartpiConfiguration.FTPpass" @input="saveChange">
+                    <input :type="showFTPpass ? 'text' : 'password'" class="form-control" aria-describedby="ftp-password" v-model="smartpiConfiguration.FTPpass" @focus="secretFocus('FTPpass')" @blur="secretBlur('FTPpass')" @input="secretInput">
                     <button class="btn btn-outline-secondary" type="button" @click="showFTPpass = !showFTPpass" tabindex="-1">
                       <svg v-if="!showFTPpass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
                       <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
@@ -1690,7 +1714,7 @@ export default {
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="influx-api-token">{{ $t("influxapitoken") }}</span>
                     </div>
-                    <input type="text" class="form-control" aria-describedby="influx-api-token" v-model="smartpiConfiguration.InfluxAPIToken" @input="saveChange">
+                    <input type="text" class="form-control" aria-describedby="influx-api-token" v-model="smartpiConfiguration.InfluxAPIToken" @focus="secretFocus('InfluxAPIToken')" @blur="secretBlur('InfluxAPIToken')" @input="secretInput">
                   </div>
                 </div>
                 <div class="col-4">         
@@ -1734,7 +1758,7 @@ export default {
                     <div class="input-group-prepend">
                       <span class="input-group-text" id="influx-password">{{ $t("influxpassword") }}</span>
                     </div>
-                    <input :type="showInfluxpassword ? 'text' : 'password'" class="form-control" aria-describedby="influx-password" v-model="smartpiConfiguration.Influxpassword" @input="saveChange">
+                    <input :type="showInfluxpassword ? 'text' : 'password'" class="form-control" aria-describedby="influx-password" v-model="smartpiConfiguration.Influxpassword" @focus="secretFocus('Influxpassword')" @blur="secretBlur('Influxpassword')" @input="secretInput">
                     <button class="btn btn-outline-secondary" type="button" @click="showInfluxpassword = !showInfluxpassword" tabindex="-1">
                       <svg v-if="!showInfluxpassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
                       <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>
