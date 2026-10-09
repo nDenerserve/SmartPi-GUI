@@ -36,7 +36,6 @@ export const useAuthStore = defineStore('auth', {
                 password: data.password
             });
             if (tokenState.data) {
-                console.log(tokenState.data.token);
                 localStorage.setItem('token', tokenState.data.token);
                 this.tokenState = localStorage.getItem('token');
                 this.router.push('/');
@@ -55,7 +54,6 @@ export const useAuthStore = defineStore('auth', {
                 password: data.password
             });
             if (tokenState.data) {
-                console.log(tokenState.data.token);
                 localStorage.setItem('token', tokenState.data.token);
                 this.tokenState = localStorage.getItem('token');
                 this.router.push(redirect);
