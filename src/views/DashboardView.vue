@@ -96,7 +96,6 @@ export default {
       try {
         const { data } = await api.get('/smartpiac/livedata');
 
-        console.log(data);
 
         // The live-data endpoint returns one "phase" per array index (L1/L2/L3,
         // plus a 4th synthetic "total" entry for current), each holding a list
@@ -239,7 +238,6 @@ export default {
       let powerRequest
       let date
 
-      console.log(aggregate +" "+typeof aggregate)
 
       if ((typeof startdate == 'undefined') || (typeof stopdate == 'undefined')) {
         startdate = new Date();
@@ -386,7 +384,6 @@ export default {
               data: barData
             })
 
-            console.log(barChartDataDatasets[i])
           }
 
           
@@ -621,7 +618,9 @@ export default {
                   <!-- <div class="align-self-center"> -->
                     <i class="icon-info-square-solid float-left"></i>
                   <!-- </div> -->
-                  <div class="media-body text-right text-primary card-infocard">
+                  <!-- data is null until the first livedata response; like the
+                       other cards' v-if="loaded", don't render against it. -->
+                  <div class="media-body text-right text-primary card-infocard" v-if="data">
                     <h3 class="text-green-d1">{{ data.name}}</h3>
                     <div class="card-space-between">
                       <div>{{ $t("serialnumber") }}</div>
@@ -633,7 +632,7 @@ export default {
                     </div>
                     <div class="card-space-between">
                       <div>{{ $t("datatime") }}</div>
-                      <div>{{ data.datasets[0].time }}</div>
+                      <div>{{ data.datasets?.[0]?.time }}</div>
                     </div>
                     <div class="card-space-between">
                       <div>{{ $t("calltime") }}</div>
