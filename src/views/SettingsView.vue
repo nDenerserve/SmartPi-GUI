@@ -7,6 +7,16 @@ import { useDateFormat, useNow } from '@vueuse/core'
 import { format, formatDistance, formatRelative, subDays, subMonths, subYears, addDays, addMonths, addYears } from 'date-fns'
 
 import MainNavigation from '@/components/MainNavigation.vue';
+import { fitCalibration, nominalVoltage, parseMeasurement, type Calibration } from '../helpers/analogout010v';
+
+// The two set points of the 0-10V calibration, in V. Far apart for a
+// precise gain, but clear of both rails (the amplifier can't reach exactly
+// 0 V with a positive offset, and runs from 12 V).
+const CAL010V_POINTS = [1, 9];
+
+function emptyCal010vRows() {
+  return [0, 1, 2, 3].map(() => ({ nominal: [null, null] as (number | null)[], measured: ['', ''], busy: false }));
+}
 
 // The device never sends stored passwords and tokens; it returns this mask
 // instead and keeps the stored value when the mask is sent back (see
@@ -52,6 +62,19 @@ export default {
     i2cScan: {} as any,
     i2cScanning: false,
     i2cScanError: false,
+    // Modules tab: 0-10V output module calibration assistant. current is
+    // what the SmartPi has stored (identity when uncalibrated); rows hold
+    // the measurement in progress per output: nominal voltage of the DAC
+    // code actually set for each point, and what the user measured there.
+    cal010v: {
+      address: '0x60',
+      points: CAL010V_POINTS,
+      current: null as Calibration[] | null,
+      calibrated: false,
+      rows: emptyCal010vRows(),
+      error: '',
+      info: '',
+    },
     // Update tab: firmware/package version info, .deb upload state, and job
     // status - the job is shared between the upload and the apt-install
     // actions below since only one update job can run on the device at a
@@ -488,10 +511,129 @@ export default {
         MCP23017: this.$t('i2c_module_mcp23017') as string,
         MCP3424: this.$t('i2c_module_mcp3424') as string,
         MCP4725: this.$t('i2c_module_mcp4725') as string,
+        MCP4728: this.$t('i2c_module_mcp4728') as string,
+        'MCP4725/MCP4728': `${this.$t('i2c_module_mcp4725')} / ${this.$t('i2c_module_mcp4728')}`,
       };
       const prefix = this.$t('i2c_hintprefix') as string;
       const module = modules[device.hint];
       return module ? `${prefix}: ${device.hint} (${module})?` : `${prefix}: ${device.hint}?`;
+    },
+
+    // 0-10V calibration (Modules tab) -----------------------------------
+
+    // Turns an api call result into an error text, or '' on success - the
+    // shared api client resolves with the Axios error instead of rejecting
+    // (see scanI2c above).
+    cal010vError: function (response: any): string {
+      if (!response || !response.isAxiosError) {
+        return '';
+      }
+      const msg = response.response?.data?.message;
+      return (this.$t('cal010v_error') as string) + (msg ? ': ' + msg : '');
+    },
+    loadCal010v: function () {
+      this.cal010v.error = '';
+      this.cal010v.info = '';
+      this.cal010v.rows = emptyCal010vRows();
+      api.get(`/module/analogout010v/${this.cal010v.address}/calibration`)
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal010v.error = err;
+          this.cal010v.current = null;
+          return;
+        }
+        this.cal010v.current = response.data.outputs;
+        this.cal010v.calibrated = response.data.calibrated;
+      });
+    },
+    // Drives output i (0-3) to set point p (index into points) and records
+    // the nominal voltage of the code the backend chose for it.
+    setCal010vPoint: function (i: number, p: number) {
+      const row = this.cal010v.rows[i];
+      row.busy = true;
+      this.cal010v.error = '';
+      this.cal010v.info = '';
+      api.put(`/module/analogout010v/${this.cal010v.address}/${i + 1}/${this.cal010v.points[p]}`)
+      .then((response: any) => {
+        row.busy = false;
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal010v.error = err;
+          return;
+        }
+        row.nominal[p] = nominalVoltage(response.data.channels[i]);
+      });
+    },
+    // The new calibration of output i from its two measurements, null while
+    // incomplete, undefined if the numbers don't give a plausible one.
+    cal010vFit: function (i: number): Calibration | null | undefined {
+      const row = this.cal010v.rows[i];
+      const m = row.measured.map((v: string) => parseMeasurement(v));
+      if (row.nominal[0] === null || row.nominal[1] === null || m.some(isNaN)) {
+        return null;
+      }
+      return fitCalibration(row.nominal[0], m[0], row.nominal[1], m[1]) ?? undefined;
+    },
+    formatCal010v: function (c: Calibration | null | undefined): string {
+      if (!c) {
+        return '';
+      }
+      // Decimal comma on the German page, same as the measurement inputs.
+      const locale = this.$i18n.locale;
+      const num = (v: number, digits: number) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+      const mv = c.offset * 1000;
+      return `× ${num(c.gain, 6)}  ${mv >= 0 ? '+' : ''}${num(mv, 1)} mV`;
+    },
+    // Stores the new fits; outputs without a complete new measurement keep
+    // their current calibration.
+    saveCal010v: function () {
+      if (!this.cal010v.current) {
+        return;
+      }
+      const fits = [0, 1, 2, 3].map((i) => this.cal010vFit(i));
+      if (fits.some((f) => f === undefined)) {
+        this.cal010v.error = this.$t('cal010v_invalid') as string;
+        return;
+      }
+      if (fits.every((f) => f === null)) {
+        this.cal010v.error = this.$t('cal010v_nothing') as string;
+        return;
+      }
+      const outputs = fits.map((f, i) => f ?? this.cal010v.current![i]);
+      api.put(`/module/analogout010v/${this.cal010v.address}/calibration`, { outputs })
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal010v.error = err;
+          return;
+        }
+        this.loadCal010v();
+        this.cal010v.info = this.$t('cal010v_saved') as string;
+      });
+    },
+    deleteCal010v: function () {
+      if (!window.confirm(this.$t('cal010v_confirmdelete') as string)) {
+        return;
+      }
+      api.delete(`/module/analogout010v/${this.cal010v.address}/calibration`)
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal010v.error = err;
+          return;
+        }
+        this.loadCal010v();
+        this.cal010v.info = this.$t('cal010v_deleted') as string;
+      });
+    },
+    zeroCal010v: function () {
+      api.put(`/module/analogout010v/${this.cal010v.address}`, { voltages: [0, 0, 0, 0] })
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        this.cal010v.error = err;
+        this.cal010v.info = err ? '' : (this.$t('cal010v_zeroed') as string);
+      });
     },
 
     // Update tab -------------------------------------------------------
@@ -803,7 +945,7 @@ export default {
             <button class="nav-link" id="apitokens-tab" data-bs-toggle="tab" data-bs-target="#apitokens" type="button" role="tab" aria-controls="apitokens" aria-selected="false" @click="fetchDeviceTokens()">{{ $t("apitokens") }}</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="i2c-tab" data-bs-toggle="tab" data-bs-target="#i2c" type="button" role="tab" aria-controls="i2c" aria-selected="false" @click="scanI2c()">{{ $t("i2c") }}</button>
+            <button class="nav-link" id="i2c-tab" data-bs-toggle="tab" data-bs-target="#i2c" type="button" role="tab" aria-controls="i2c" aria-selected="false" @click="scanI2c(); loadCal010v()">{{ $t("i2c") }}</button>
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="update-tab" data-bs-toggle="tab" data-bs-target="#update" type="button" role="tab" aria-controls="update" aria-selected="false" @click="openUpdateTab()">{{ $t("update") }}</button>
@@ -1928,7 +2070,7 @@ export default {
                     <!-- <button type="button" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#addIpModal">
                       <i class="icon-plus"></i>
                     </button> -->
-                    <a class="l-nav_link marginb0 paddingt0"  href="#" v-on:click="addIpLine[connection.Name] = !addIpLine[connection.Name]"><i class="icon-plus"></i></a>
+                    <button type="button" class="btn btn-outline-success btn-sm" :title="$t('network_addaddress')" :aria-label="$t('network_addaddress')" :aria-expanded="!!addIpLine[connection.Name]" @click="addIpLine[connection.Name] = !addIpLine[connection.Name]">+</button>
                   </div>
                 </div>
 
@@ -2055,8 +2197,8 @@ export default {
               <!-- Inline "create user" form, same open/close-toggle idiom as
                    the API tokens tab's "create token" form. -->
               <div class="row align-items-center">
-                <div class="col-1">
-                  <a class="l-nav_link marginb0 paddingt0" href="#" @click="showCreateUser = !showCreateUser"><i class="icon-plus"></i></a>
+                <div class="col-auto margint10">
+                  <button type="button" class="btn btn-outline-success btn-sm" :aria-expanded="showCreateUser" @click="showCreateUser = !showCreateUser">+ {{ $t("users_createuser") }}</button>
                 </div>
               </div>
 
@@ -2132,8 +2274,8 @@ export default {
               <!-- Inline "create token" form, same open/close-toggle idiom as
                    the network tab's "add address" form above. -->
               <div class="row align-items-center">
-                <div class="col-1">
-                  <a class="l-nav_link marginb0 paddingt0" href="#" @click="showCreateToken = !showCreateToken"><i class="icon-plus"></i></a>
+                <div class="col-auto margint10">
+                  <button type="button" class="btn btn-outline-success btn-sm" :aria-expanded="showCreateToken" @click="showCreateToken = !showCreateToken">+ {{ $t("apitokens_create") }}</button>
                 </div>
               </div>
 
@@ -2206,6 +2348,74 @@ export default {
                   </tr>
                 </tbody>
               </table>
+
+              <!-- 0-10V output module calibration: per output, set 1 V and
+                   9 V, type in what the meter shows, the gain/offset fit is
+                   stored on the SmartPi (PUT .../calibration, admin only). -->
+              <div class="row margint20 align-items-center">
+                <h3>{{ $t("cal010v") }}</h3>
+              </div>
+              <div class="row margint10">
+                <p>{{ $t("cal010v_intro") }}</p>
+              </div>
+              <div class="row margint10 align-items-center">
+                <div class="col-auto">
+                  <div class="input-group">
+                    <span class="input-group-text">{{ $t("i2c_address") }}</span>
+                    <input type="text" class="form-control" style="max-width: 7em" v-model="cal010v.address" aria-label="cal010v-address">
+                    <button type="button" class="btn btn-outline-primary" @click="loadCal010v()">{{ $t("cal010v_load") }}</button>
+                  </div>
+                </div>
+                <div class="col-auto text-muted" v-if="cal010v.current">
+                  {{ cal010v.calibrated ? $t("cal010v_iscalibrated") : $t("cal010v_none") }}
+                </div>
+              </div>
+
+              <div class="row margint10" v-if="cal010v.error">
+                <div class="alert alert-danger" role="alert">{{ cal010v.error }}</div>
+              </div>
+              <div class="row margint10" v-if="cal010v.info">
+                <div class="alert alert-success" role="alert">{{ cal010v.info }}</div>
+              </div>
+
+              <table class="table align-middle" v-if="cal010v.current">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ $t("cal010v_output") }}</th>
+                    <th scope="col">{{ $t("cal010v_current") }}</th>
+                    <th scope="col" v-for="v in cal010v.points" :key="v">{{ $t("cal010v_point", { v: v }) }}</th>
+                    <th scope="col">{{ $t("cal010v_new") }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, i) in cal010v.rows" :key="i">
+                    <td>{{ i + 1 }}</td>
+                    <td><small class="text-nowrap">{{ formatCal010v(cal010v.current[i]) }}</small></td>
+                    <td v-for="(v, p) in cal010v.points" :key="v">
+                      <div class="input-group input-group-sm" style="min-width: 14em">
+                        <button type="button" class="btn btn-outline-success" :disabled="row.busy" @click="setCal010vPoint(i, p)">{{ $t("cal010v_set", { v: v }) }}</button>
+                        <input type="text" inputmode="decimal" class="form-control" :placeholder="$t('cal010v_measured')" v-model="row.measured[p]" :disabled="row.nominal[p] === null" :aria-label="'cal010v-out' + (i + 1) + '-' + v">
+                      </div>
+                    </td>
+                    <td>
+                      <small class="text-nowrap text-success" v-if="cal010vFit(i)">{{ formatCal010v(cal010vFit(i)) }}</small>
+                      <small class="text-danger" v-else-if="cal010vFit(i) === undefined">{{ $t("cal010v_implausible") }}</small>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="row margint10 marginb20" v-if="cal010v.current">
+                <div class="col-auto">
+                  <button type="button" class="btn btn-success" @click="saveCal010v()">{{ $t("cal010v_save") }}</button>
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-outline-secondary" @click="zeroCal010v()">{{ $t("cal010v_zero") }}</button>
+                </div>
+                <div class="col-auto" v-if="cal010v.calibrated">
+                  <button type="button" class="btn btn-outline-danger" @click="deleteCal010v()">{{ $t("cal010v_delete") }}</button>
+                </div>
+              </div>
             </div>
           </div>
 
