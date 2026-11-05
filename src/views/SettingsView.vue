@@ -8,6 +8,7 @@ import { format, formatDistance, formatRelative, subDays, subMonths, subYears, a
 
 import MainNavigation from '@/components/MainNavigation.vue';
 import { fitCalibration, nominalVoltage, parseMeasurement, type Calibration } from '../helpers/analogout010v';
+import { CAL420MA_POINTS, MAX_OFFSET_MA, nominalCurrent } from '../helpers/analogout420ma';
 
 // The two set points of the 0-10V calibration, in V. Far apart for a
 // precise gain, but clear of both rails (the amplifier can't reach exactly
@@ -68,10 +69,26 @@ export default {
     // code actually set for each point, and what the user measured there.
     cal010v: {
       address: '0x60',
+      // calibration section of the module box expanded (accordion)
+      open: false,
       points: CAL010V_POINTS,
       current: null as Calibration[] | null,
       calibrated: false,
       rows: emptyCal010vRows(),
+      error: '',
+      info: '',
+    },
+    // Modules tab: 4-20mA output module (one output) calibration, same idea
+    // as cal010v with the two points 4 and 20 mA.
+    cal420: {
+      address: '0x60',
+      open: false,
+      points: CAL420MA_POINTS,
+      current: null as Calibration | null,
+      calibrated: false,
+      nominal: [null, null] as (number | null)[],
+      measured: ['', ''],
+      busy: false,
       error: '',
       info: '',
     },
@@ -211,6 +228,63 @@ export default {
     changeCt: function (cttype: string, phase) {
       this.smartpiACConfiguration.CTType[phase] = cttype;
       this.saveACChange();
+    },
+    // CT type "X/mA": current-output CT with any ratio, primary current in
+    // A (CTTypePrimaryCurrent) and rated secondary current in mA
+    // (CTTypeSecondaryCurrent), at most 100 mA - same limit as the
+    // backend (ValidCustomCT).
+    customCtValues: function (phase: number): [number, number] {
+      const conf = this.smartpiACConfiguration;
+      const a = Number(String(conf.CTTypePrimaryCurrent?.[phase] ?? '').trim().replace(',', '.'));
+      const ma = Number(String(conf.CTTypeSecondaryCurrent?.[phase] ?? '').trim().replace(',', '.'));
+      return [a, ma];
+    },
+    customCtValid: function (phase: number): boolean {
+      const [a, ma] = this.customCtValues(phase);
+      return a > 0 && ma > 0 && ma <= 100;
+    },
+    // The burden is fixed (7.5 Ohm, as for the SCT013 - there is no other
+    // on the board) and the ADE7878 input takes at most 0.5 V peak =
+    // 0.5/sqrt(2) = 353.55 mV rms, so a CT may only drive up to
+    // 353.55 mV / 7.5 Ohm = 47.14 mA. Returns the primary current up to
+    // which the configured CT can be used and that as percent of its
+    // rating, or null if that is at least CT_WARN_PCT % of the rating (or
+    // the input isn't valid yet). Calculated from the exact values; only
+    // the displayed numbers are rounded.
+    customCtLimit: function (phase: number): { maxA: number; pct: number } | null {
+      if (!this.customCtValid(phase)) {
+        return null;
+      }
+      const [a, ma] = this.customCtValues(phase);
+      const maxMa = 500 / Math.SQRT2 / 7.5; // 47.1405 mA
+      const pct = (100 * maxMa) / ma;
+      // Below 90 % of the rating only: a 50 mA CT like the SCT013 reaches
+      // 94.3 % and is used like that throughout, no need to warn there.
+      if (pct >= 90) {
+        return null;
+      }
+      return { maxA: (a * maxMa) / ma, pct };
+    },
+    customCtWarning: function (phase: number): string {
+      const l = this.customCtLimit(phase);
+      if (!l) {
+        return '';
+      }
+      const [a, ma] = this.customCtValues(phase);
+      const loc = this.$i18n.locale;
+      const n = (v: number, d = 0) => v.toLocaleString(loc, { useGrouping: false, maximumFractionDigits: d });
+      // Rounded down, so the displayed limit is never above the real one.
+      const down = (v: number, d: number) => Math.floor(v * 10 ** d) / 10 ** d;
+      return this.$t('secondarycurrent_warning', { ma: n(ma, 2), max: n(down(l.maxA, 1), 1), pct: n(down(l.pct, 1), 1), a: n(a) }) as string;
+    },
+    customCtLabel: function (phase: number): string {
+      const [a, ma] = this.customCtValues(phase);
+      if (!this.customCtValid(phase)) {
+        return this.$t('X/mA') as string;
+      }
+      // No thousands separator: "6.666A" would read as 6.666 A on the German page.
+      const n = (v: number) => v.toLocaleString(this.$i18n.locale, { useGrouping: false, maximumFractionDigits: 2 });
+      return `${n(a)}A/${n(ma)}mA`;
     },
     changeLoglevel: function (loglevel: string) {
       this.smartpiConfiguration.LogLevel = loglevel;
@@ -636,6 +710,105 @@ export default {
       });
     },
 
+    // 4-20mA calibration (Modules tab) ----------------------------------
+
+    loadCal420: function () {
+      this.cal420.error = '';
+      this.cal420.info = '';
+      this.cal420.nominal = [null, null];
+      this.cal420.measured = ['', ''];
+      api.get(`/module/analogout420ma/${this.cal420.address}/calibration`)
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal420.error = err;
+          this.cal420.current = null;
+          return;
+        }
+        this.cal420.current = { gain: response.data.gain, offset: response.data.offset };
+        this.cal420.calibrated = response.data.calibrated;
+      });
+    },
+    // Drives the output to set point p and records the nominal current of
+    // the code the backend chose for it.
+    setCal420Point: function (p: number) {
+      this.cal420.busy = true;
+      this.cal420.error = '';
+      this.cal420.info = '';
+      api.put(`/module/analogout420ma/${this.cal420.address}/${this.cal420.points[p]}`)
+      .then((response: any) => {
+        this.cal420.busy = false;
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal420.error = err;
+          return;
+        }
+        this.cal420.nominal[p] = nominalCurrent(response.data.dacvalue);
+      });
+    },
+    // null while incomplete, undefined if implausible - as cal010vFit.
+    cal420Fit: function (): Calibration | null | undefined {
+      const n = this.cal420.nominal;
+      const m = this.cal420.measured.map((v: string) => parseMeasurement(v));
+      if (n[0] === null || n[1] === null || m.some(isNaN)) {
+        return null;
+      }
+      return fitCalibration(n[0], m[0], n[1], m[1], MAX_OFFSET_MA) ?? undefined;
+    },
+    formatCal420: function (c: Calibration | null | undefined): string {
+      if (!c) {
+        return '';
+      }
+      const locale = this.$i18n.locale;
+      const num = (v: number, digits: number) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+      const ua = c.offset * 1000;
+      return `× ${num(c.gain, 6)}  ${ua >= 0 ? '+' : ''}${num(ua, 0)} µA`;
+    },
+    saveCal420: function () {
+      const fit = this.cal420Fit();
+      if (fit === undefined) {
+        this.cal420.error = this.$t('cal420_invalid') as string;
+        return;
+      }
+      if (fit === null) {
+        this.cal420.error = this.$t('cal420_nothing') as string;
+        return;
+      }
+      api.put(`/module/analogout420ma/${this.cal420.address}/calibration`, fit)
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal420.error = err;
+          return;
+        }
+        this.loadCal420();
+        this.cal420.info = this.$t('cal010v_saved') as string;
+      });
+    },
+    deleteCal420: function () {
+      if (!window.confirm(this.$t('cal420_confirmdelete') as string)) {
+        return;
+      }
+      api.delete(`/module/analogout420ma/${this.cal420.address}/calibration`)
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        if (err) {
+          this.cal420.error = err;
+          return;
+        }
+        this.loadCal420();
+        this.cal420.info = this.$t('cal420_deleted') as string;
+      });
+    },
+    minCal420: function () {
+      api.put(`/module/analogout420ma/${this.cal420.address}/4`)
+      .then((response: any) => {
+        const err = this.cal010vError(response);
+        this.cal420.error = err;
+        this.cal420.info = err ? '' : (this.$t('cal420_minned') as string);
+      });
+    },
+
     // Update tab -------------------------------------------------------
 
     // Loads the running (currently executing) and dpkg-installed versions.
@@ -945,7 +1118,7 @@ export default {
             <button class="nav-link" id="apitokens-tab" data-bs-toggle="tab" data-bs-target="#apitokens" type="button" role="tab" aria-controls="apitokens" aria-selected="false" @click="fetchDeviceTokens()">{{ $t("apitokens") }}</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="i2c-tab" data-bs-toggle="tab" data-bs-target="#i2c" type="button" role="tab" aria-controls="i2c" aria-selected="false" @click="scanI2c(); loadCal010v()">{{ $t("i2c") }}</button>
+            <button class="nav-link" id="i2c-tab" data-bs-toggle="tab" data-bs-target="#i2c" type="button" role="tab" aria-controls="i2c" aria-selected="false" @click="scanI2c(); loadCal010v(); loadCal420()">{{ $t("i2c") }}</button>
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link" id="update-tab" data-bs-toggle="tab" data-bs-target="#update" type="button" role="tab" aria-controls="update" aria-selected="false" @click="openUpdateTab()">{{ $t("update") }}</button>
@@ -992,6 +1165,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[1] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[1] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[1] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[1] === 'X/mA'">{{ customCtLabel(1) }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[1] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
@@ -1014,6 +1188,14 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <!-- "600A/100mA" is deliberately not offered here: it was made for a
+                           customer order with a modified burden resistor (3.75 Ohm instead
+                           of the standard 7.5 Ohm) and is wrong on standard SmartPis. Such
+                           CTs are set up as X/mA instead. See CTTypes in ade7878.go. -->
+                      <li><a class="dropdown-item" href="#" @click="changeCt('X/mA',1)">{{
+                        $t("X/mA")
+                      }}</a>
+                      </li>
                       <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',1)">{{
                         $t("ROGOWSKICOIL")
                       }}</a>
@@ -1021,12 +1203,18 @@ export default {
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
-                    <div v-if="smartpiACConfiguration.CTType[1] === 'X/1A' || smartpiACConfiguration.CTType[1] === 'X/5A'" class="input-group input-group-sm mb-3">
+                    <div v-if="smartpiACConfiguration.CTType[1] === 'X/1A' || smartpiACConfiguration.CTType[1] === 'X/5A' || smartpiACConfiguration.CTType[1] === 'X/mA'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="primary-current1">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current1"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[1]" @input="saveACChange">
                     </div>
+                    <div v-if="smartpiACConfiguration.CTType[1] === 'X/mA' && smartpiACConfiguration.CTTypeSecondaryCurrent" class="input-group input-group-sm mb-3">
+                      <span class="input-group-text" id="secondary-current1">{{ $t("secondarycurrent") }}</span>
+                      <input type="text" inputmode="decimal" class="form-control" :class="{ 'is-invalid': !customCtValid(1) }" aria-describedby="secondary-current1" :title="$t('secondarycurrent_hint')" v-model="smartpiACConfiguration.CTTypeSecondaryCurrent[1]" @input="saveACChange">
+                      <span class="input-group-text">mA</span>
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[1] === 'X/mA' && customCtWarning(1)" class="alert alert-warning py-1 px-2 small" role="alert">{{ customCtWarning(1) }}</div>
                     <div v-if="smartpiACConfiguration.CTType[1] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="rogowski-voltage1">{{ $t("rogowskivoltage") }}</span>
@@ -1070,6 +1258,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[2] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[2] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[2] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[2] === 'X/mA'">{{ customCtLabel(2) }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[2] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
@@ -1092,6 +1281,10 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <li><a class="dropdown-item" href="#" @click="changeCt('X/mA',2)">{{
+                        $t("X/mA")
+                      }}</a>
+                      </li>
                       <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',2)">{{
                         $t("ROGOWSKICOIL")
                       }}</a>
@@ -1099,12 +1292,18 @@ export default {
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
-                    <div v-if="smartpiACConfiguration.CTType[2] === 'X/1A' || smartpiACConfiguration.CTType[2] === 'X/5A'" class="input-group input-group-sm mb-3">
+                    <div v-if="smartpiACConfiguration.CTType[2] === 'X/1A' || smartpiACConfiguration.CTType[2] === 'X/5A' || smartpiACConfiguration.CTType[2] === 'X/mA'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="primary-current2">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current2"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[2]" @input="saveACChange">
                     </div>
+                    <div v-if="smartpiACConfiguration.CTType[2] === 'X/mA' && smartpiACConfiguration.CTTypeSecondaryCurrent" class="input-group input-group-sm mb-3">
+                      <span class="input-group-text" id="secondary-current2">{{ $t("secondarycurrent") }}</span>
+                      <input type="text" inputmode="decimal" class="form-control" :class="{ 'is-invalid': !customCtValid(2) }" aria-describedby="secondary-current2" :title="$t('secondarycurrent_hint')" v-model="smartpiACConfiguration.CTTypeSecondaryCurrent[2]" @input="saveACChange">
+                      <span class="input-group-text">mA</span>
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[2] === 'X/mA' && customCtWarning(2)" class="alert alert-warning py-1 px-2 small" role="alert">{{ customCtWarning(2) }}</div>
                     <div v-if="smartpiACConfiguration.CTType[2] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="rogowski-voltage2">{{ $t("rogowskivoltage") }}</span>
@@ -1148,6 +1347,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[3] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[3] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[3] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[3] === 'X/mA'">{{ customCtLabel(3) }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[3] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
@@ -1170,6 +1370,10 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <li><a class="dropdown-item" href="#" @click="changeCt('X/mA',3)">{{
+                        $t("X/mA")
+                      }}</a>
+                      </li>
                       <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',3)">{{
                         $t("ROGOWSKICOIL")
                       }}</a>
@@ -1177,12 +1381,18 @@ export default {
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
-                    <div v-if="smartpiACConfiguration.CTType[3] === 'X/1A' || smartpiACConfiguration.CTType[3] === 'X/5A'" class="input-group input-group-sm mb-3">
+                    <div v-if="smartpiACConfiguration.CTType[3] === 'X/1A' || smartpiACConfiguration.CTType[3] === 'X/5A' || smartpiACConfiguration.CTType[3] === 'X/mA'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="primary-current3">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current3"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[3]" @input="saveACChange">
                     </div>
+                    <div v-if="smartpiACConfiguration.CTType[3] === 'X/mA' && smartpiACConfiguration.CTTypeSecondaryCurrent" class="input-group input-group-sm mb-3">
+                      <span class="input-group-text" id="secondary-current3">{{ $t("secondarycurrent") }}</span>
+                      <input type="text" inputmode="decimal" class="form-control" :class="{ 'is-invalid': !customCtValid(3) }" aria-describedby="secondary-current3" :title="$t('secondarycurrent_hint')" v-model="smartpiACConfiguration.CTTypeSecondaryCurrent[3]" @input="saveACChange">
+                      <span class="input-group-text">mA</span>
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[3] === 'X/mA' && customCtWarning(3)" class="alert alert-warning py-1 px-2 small" role="alert">{{ customCtWarning(3) }}</div>
                     <div v-if="smartpiACConfiguration.CTType[3] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="rogowski-voltage3">{{ $t("rogowskivoltage") }}</span>
@@ -1226,6 +1436,7 @@ export default {
                       <span v-else-if="smartpiACConfiguration.CTType[4] === '400A/033V'">{{ $t("400A/033V") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[4] === 'X/1A'">{{ $t("X/1A") }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[4] === 'X/5A'">{{ $t("X/5A") }}</span>
+                      <span v-else-if="smartpiACConfiguration.CTType[4] === 'X/mA'">{{ customCtLabel(4) }}</span>
                       <span v-else-if="smartpiACConfiguration.CTType[4] === 'ROGOWSKI'">{{ $t("ROGOWSKICOIL") }}</span>
                     </button>
                     <ul class="dropdown-menu width100p">
@@ -1248,6 +1459,10 @@ export default {
                         $t("X/5A")
                       }}</a>
                       </li>
+                      <li><a class="dropdown-item" href="#" @click="changeCt('X/mA',4)">{{
+                        $t("X/mA")
+                      }}</a>
+                      </li>
                       <li><a class="dropdown-item" href="#" @click="changeCt('ROGOWSKI',4)">{{
                         $t("ROGOWSKICOIL")
                       }}</a>
@@ -1255,12 +1470,18 @@ export default {
                     </ul>
                   </div>
                   <div v-if="smartpiACConfiguration.CTType">
-                    <div v-if="smartpiACConfiguration.CTType[4] === 'X/1A' || smartpiACConfiguration.CTType[4] === 'X/5A'" class="input-group input-group-sm mb-3">
+                    <div v-if="smartpiACConfiguration.CTType[4] === 'X/1A' || smartpiACConfiguration.CTType[4] === 'X/5A' || smartpiACConfiguration.CTType[4] === 'X/mA'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="primary-current4">{{ $t("primarycurrent") }}</span>
                       </div>
                       <input type="text" class="form-control" aria-describedby="primary-current4"  v-model="smartpiACConfiguration.CTTypePrimaryCurrent[4]" @input="saveACChange">
                     </div>
+                    <div v-if="smartpiACConfiguration.CTType[4] === 'X/mA' && smartpiACConfiguration.CTTypeSecondaryCurrent" class="input-group input-group-sm mb-3">
+                      <span class="input-group-text" id="secondary-current4">{{ $t("secondarycurrent") }}</span>
+                      <input type="text" inputmode="decimal" class="form-control" :class="{ 'is-invalid': !customCtValid(4) }" aria-describedby="secondary-current4" :title="$t('secondarycurrent_hint')" v-model="smartpiACConfiguration.CTTypeSecondaryCurrent[4]" @input="saveACChange">
+                      <span class="input-group-text">mA</span>
+                    </div>
+                    <div v-if="smartpiACConfiguration.CTType[4] === 'X/mA' && customCtWarning(4)" class="alert alert-warning py-1 px-2 small" role="alert">{{ customCtWarning(4) }}</div>
                     <div v-if="smartpiACConfiguration.CTType[4] === 'ROGOWSKI'" class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <span class="input-group-text" id="rogowski-voltage4">{{ $t("rogowskivoltage") }}</span>
@@ -2305,115 +2526,180 @@ export default {
                 <h2>{{ $t("i2c") }}</h2>
               </div>
               <div class="row margint10">
-                <p>{{ $t("i2c_intro") }}</p>
+                <p>{{ $t("modules_intro") }}</p>
               </div>
 
-              <div class="row margint10 align-items-center">
-                <div class="col-auto">
-                  <button type="button" class="btn btn-outline-primary" :disabled="i2cScanning" @click="scanI2c()">
+              <!-- I2C bus scan -->
+              <div class="card margint10">
+                <div class="card-header d-flex flex-wrap align-items-center gap-3">
+                  <h3 class="h5 mb-0 me-auto">{{ $t("i2c_scan_title") }}</h3>
+                  <span class="text-muted" v-if="i2cScan.bus">{{ $t("i2c_bus") }}: <code>{{ i2cScan.bus }}</code></span>
+                  <button type="button" class="btn btn-sm btn-outline-primary" :disabled="i2cScanning" @click="scanI2c()">
                     {{ i2cScanning ? $t("i2c_scanning") : $t("i2c_scan") }}
                   </button>
                 </div>
-                <div class="col-auto text-muted" v-if="i2cScan.bus">
-                  {{ $t("i2c_bus") }}: <code>{{ i2cScan.bus }}</code>
+                <div class="card-body">
+                  <p class="text-muted">{{ $t("i2c_intro") }}</p>
+                  <div class="alert alert-danger mb-0" role="alert" v-if="i2cScanError">{{ $t("i2c_error") }}</div>
+                  <table class="table mb-0" v-else-if="i2cScan.devices">
+                    <thead>
+                      <tr>
+                        <th scope="col">{{ $t("i2c_address") }}</th>
+                        <th scope="col">{{ $t("i2c_status") }}</th>
+                        <th scope="col">{{ $t("i2c_hint") }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-if="i2cScan.devices.length === 0">
+                        <td colspan="3" class="text-muted">{{ $t("i2c_empty") }}</td>
+                      </tr>
+                      <tr v-for="device in i2cScan.devices" :key="device.address">
+                        <td><code>{{ device.address }}</code></td>
+                        <td>
+                          <span class="badge" :class="i2cStatusBadgeClass(device.status)">
+                            {{ device.status === 'in_use' ? $t("i2c_status_inuse") : $t("i2c_status_detected") }}
+                          </span>
+                        </td>
+                        <td>
+                          <span v-if="i2cHintText(device)" class="text-muted fst-italic">{{ i2cHintText(device) }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              <div class="row margint10" v-if="i2cScanError">
-                <div class="alert alert-danger" role="alert">{{ $t("i2c_error") }}</div>
-              </div>
-
-              <table class="table" v-else-if="i2cScan.devices">
-                <thead>
-                  <tr>
-                    <th scope="col">{{ $t("i2c_address") }}</th>
-                    <th scope="col">{{ $t("i2c_status") }}</th>
-                    <th scope="col">{{ $t("i2c_hint") }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="i2cScan.devices.length === 0">
-                    <td colspan="3" class="text-muted">{{ $t("i2c_empty") }}</td>
-                  </tr>
-                  <tr v-for="device in i2cScan.devices" :key="device.address">
-                    <td><code>{{ device.address }}</code></td>
-                    <td>
-                      <span class="badge" :class="i2cStatusBadgeClass(device.status)">
-                        {{ device.status === 'in_use' ? $t("i2c_status_inuse") : $t("i2c_status_detected") }}
+              <!-- 0-10V output module: address and calibration status, the
+                   calibration assistant itself collapsed below (per output,
+                   set 1 V and 9 V, type in what the meter shows, the
+                   gain/offset fit is stored on the SmartPi, admin only). -->
+              <div class="card margint20">
+                <div class="card-header">
+                  <h3 class="h5 mb-0">{{ $t("mod010v_title") }}</h3>
+                </div>
+                <div class="card-body">
+                  <div class="row align-items-center g-2">
+                    <div class="col-auto">
+                      <div class="input-group">
+                        <span class="input-group-text">{{ $t("i2c_address") }}</span>
+                        <input type="text" class="form-control" style="max-width: 7em" v-model.trim="cal010v.address" :aria-label="'cal010v-address'" :title="$t('module_address_hint')" @change="loadCal010v()" @keyup.enter="($event.target as HTMLInputElement).blur()">
+                      </div>
+                    </div>
+                    <div class="col-auto" v-if="cal010v.current">
+                      <span class="badge" :class="cal010v.calibrated ? 'bg-success' : 'bg-secondary'">
+                        {{ cal010v.calibrated ? $t("cal010v_iscalibrated") : $t("cal010v_none") }}
                       </span>
-                    </td>
-                    <td>
-                      <span v-if="i2cHintText(device)" class="text-muted fst-italic">{{ i2cHintText(device) }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </div>
+                  </div>
+                  <div class="alert alert-danger margint10 mb-0" role="alert" v-if="cal010v.error">{{ cal010v.error }}</div>
+                  <div class="alert alert-success margint10 mb-0" role="alert" v-if="cal010v.info">{{ cal010v.info }}</div>
 
-              <!-- 0-10V output module calibration: per output, set 1 V and
-                   9 V, type in what the meter shows, the gain/offset fit is
-                   stored on the SmartPi (PUT .../calibration, admin only). -->
-              <div class="row margint20 align-items-center">
-                <h3>{{ $t("cal010v") }}</h3>
-              </div>
-              <div class="row margint10">
-                <p>{{ $t("cal010v_intro") }}</p>
-              </div>
-              <div class="row margint10 align-items-center">
-                <div class="col-auto">
-                  <div class="input-group">
-                    <span class="input-group-text">{{ $t("i2c_address") }}</span>
-                    <input type="text" class="form-control" style="max-width: 7em" v-model="cal010v.address" aria-label="cal010v-address">
-                    <button type="button" class="btn btn-outline-primary" @click="loadCal010v()">{{ $t("cal010v_load") }}</button>
+                  <div class="accordion margint10" v-if="cal010v.current">
+                    <div class="accordion-item">
+                      <h4 class="accordion-header">
+                        <button type="button" class="accordion-button" :class="{ collapsed: !cal010v.open }" :aria-expanded="cal010v.open" aria-controls="cal010v-body" @click="cal010v.open = !cal010v.open">
+                          {{ $t("cal010v") }}
+                        </button>
+                      </h4>
+                      <div id="cal010v-body" class="accordion-collapse" v-show="cal010v.open">
+                        <div class="accordion-body">
+                          <p>{{ $t("cal010v_intro") }}</p>
+                          <div class="table-responsive">
+                            <table class="table align-middle">
+                              <thead>
+                                <tr>
+                                  <th scope="col">{{ $t("cal010v_output") }}</th>
+                                  <th scope="col">{{ $t("cal010v_current") }}</th>
+                                  <th scope="col" v-for="v in cal010v.points" :key="v">{{ $t("cal010v_point", { v: v }) }}</th>
+                                  <th scope="col">{{ $t("cal010v_new") }}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr v-for="(row, i) in cal010v.rows" :key="i">
+                                  <td>{{ i + 1 }}</td>
+                                  <td><small class="text-nowrap">{{ formatCal010v(cal010v.current[i]) }}</small></td>
+                                  <td v-for="(v, p) in cal010v.points" :key="v">
+                                    <div class="input-group input-group-sm" style="min-width: 14em">
+                                      <button type="button" class="btn btn-outline-success" :disabled="row.busy" @click="setCal010vPoint(i, p)">{{ $t("cal010v_set", { v: v }) }}</button>
+                                      <input type="text" inputmode="decimal" class="form-control" :placeholder="$t('cal010v_measured')" v-model="row.measured[p]" :disabled="row.nominal[p] === null" :aria-label="'cal010v-out' + (i + 1) + '-' + v">
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <small class="text-nowrap text-success" v-if="cal010vFit(i)">{{ formatCal010v(cal010vFit(i)) }}</small>
+                                    <small class="text-danger" v-else-if="cal010vFit(i) === undefined">{{ $t("cal010v_implausible") }}</small>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-success" @click="saveCal010v()">{{ $t("cal010v_save") }}</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="zeroCal010v()">{{ $t("cal010v_zero") }}</button>
+                            <button type="button" class="btn btn-outline-danger" v-if="cal010v.calibrated" @click="deleteCal010v()">{{ $t("cal010v_delete") }}</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div class="col-auto text-muted" v-if="cal010v.current">
-                  {{ cal010v.calibrated ? $t("cal010v_iscalibrated") : $t("cal010v_none") }}
+              </div>
+
+              <!-- 4-20mA output module: same layout, one output, points 4 and 20 mA. -->
+              <div class="card margint20 marginb20">
+                <div class="card-header">
+                  <h3 class="h5 mb-0">{{ $t("mod420_title") }}</h3>
                 </div>
-              </div>
-
-              <div class="row margint10" v-if="cal010v.error">
-                <div class="alert alert-danger" role="alert">{{ cal010v.error }}</div>
-              </div>
-              <div class="row margint10" v-if="cal010v.info">
-                <div class="alert alert-success" role="alert">{{ cal010v.info }}</div>
-              </div>
-
-              <table class="table align-middle" v-if="cal010v.current">
-                <thead>
-                  <tr>
-                    <th scope="col">{{ $t("cal010v_output") }}</th>
-                    <th scope="col">{{ $t("cal010v_current") }}</th>
-                    <th scope="col" v-for="v in cal010v.points" :key="v">{{ $t("cal010v_point", { v: v }) }}</th>
-                    <th scope="col">{{ $t("cal010v_new") }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, i) in cal010v.rows" :key="i">
-                    <td>{{ i + 1 }}</td>
-                    <td><small class="text-nowrap">{{ formatCal010v(cal010v.current[i]) }}</small></td>
-                    <td v-for="(v, p) in cal010v.points" :key="v">
-                      <div class="input-group input-group-sm" style="min-width: 14em">
-                        <button type="button" class="btn btn-outline-success" :disabled="row.busy" @click="setCal010vPoint(i, p)">{{ $t("cal010v_set", { v: v }) }}</button>
-                        <input type="text" inputmode="decimal" class="form-control" :placeholder="$t('cal010v_measured')" v-model="row.measured[p]" :disabled="row.nominal[p] === null" :aria-label="'cal010v-out' + (i + 1) + '-' + v">
+                <div class="card-body">
+                  <div class="row align-items-center g-2">
+                    <div class="col-auto">
+                      <div class="input-group">
+                        <span class="input-group-text">{{ $t("i2c_address") }}</span>
+                        <input type="text" class="form-control" style="max-width: 7em" v-model.trim="cal420.address" :aria-label="'cal420-address'" :title="$t('module_address_hint')" @change="loadCal420()" @keyup.enter="($event.target as HTMLInputElement).blur()">
                       </div>
-                    </td>
-                    <td>
-                      <small class="text-nowrap text-success" v-if="cal010vFit(i)">{{ formatCal010v(cal010vFit(i)) }}</small>
-                      <small class="text-danger" v-else-if="cal010vFit(i) === undefined">{{ $t("cal010v_implausible") }}</small>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </div>
+                    <div class="col-auto" v-if="cal420.current">
+                      <span class="badge" :class="cal420.calibrated ? 'bg-success' : 'bg-secondary'">
+                        {{ cal420.calibrated ? $t("cal010v_iscalibrated") : $t("cal010v_none") }}
+                      </span>
+                    </div>
+                    <div class="col-auto text-muted" v-if="cal420.calibrated">
+                      <small>{{ formatCal420(cal420.current) }}</small>
+                    </div>
+                  </div>
+                  <div class="alert alert-danger margint10 mb-0" role="alert" v-if="cal420.error">{{ cal420.error }}</div>
+                  <div class="alert alert-success margint10 mb-0" role="alert" v-if="cal420.info">{{ cal420.info }}</div>
 
-              <div class="row margint10 marginb20" v-if="cal010v.current">
-                <div class="col-auto">
-                  <button type="button" class="btn btn-success" @click="saveCal010v()">{{ $t("cal010v_save") }}</button>
-                </div>
-                <div class="col-auto">
-                  <button type="button" class="btn btn-outline-secondary" @click="zeroCal010v()">{{ $t("cal010v_zero") }}</button>
-                </div>
-                <div class="col-auto" v-if="cal010v.calibrated">
-                  <button type="button" class="btn btn-outline-danger" @click="deleteCal010v()">{{ $t("cal010v_delete") }}</button>
+                  <div class="accordion margint10" v-if="cal420.current">
+                    <div class="accordion-item">
+                      <h4 class="accordion-header">
+                        <button type="button" class="accordion-button" :class="{ collapsed: !cal420.open }" :aria-expanded="cal420.open" aria-controls="cal420-body" @click="cal420.open = !cal420.open">
+                          {{ $t("cal420") }}
+                        </button>
+                      </h4>
+                      <div id="cal420-body" class="accordion-collapse" v-show="cal420.open">
+                        <div class="accordion-body">
+                          <p>{{ $t("cal420_intro") }}</p>
+                          <div class="row g-2 align-items-center">
+                            <div class="col-auto" v-for="(v, p) in cal420.points" :key="v">
+                              <div class="input-group" style="min-width: 16em">
+                                <button type="button" class="btn btn-outline-success" :disabled="cal420.busy" @click="setCal420Point(p)">{{ $t("cal420_set", { v: v }) }}</button>
+                                <input type="text" inputmode="decimal" class="form-control" :placeholder="$t('cal420_measured')" v-model="cal420.measured[p]" :disabled="cal420.nominal[p] === null" :aria-label="'cal420-' + v">
+                              </div>
+                            </div>
+                            <div class="col-auto">
+                              <small class="text-nowrap text-success" v-if="cal420Fit()">{{ $t("cal010v_new") }}: {{ formatCal420(cal420Fit()) }}</small>
+                              <small class="text-danger" v-else-if="cal420Fit() === undefined">{{ $t("cal010v_implausible") }}</small>
+                            </div>
+                          </div>
+                          <div class="d-flex flex-wrap gap-2 margint10">
+                            <button type="button" class="btn btn-success" @click="saveCal420()">{{ $t("cal010v_save") }}</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="minCal420()">{{ $t("cal420_min") }}</button>
+                            <button type="button" class="btn btn-outline-danger" v-if="cal420.calibrated" @click="deleteCal420()">{{ $t("cal010v_delete") }}</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

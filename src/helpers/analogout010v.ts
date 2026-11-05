@@ -13,7 +13,7 @@ export const MAX_OFFSET = 0.5;
 
 export interface Calibration {
   gain: number;
-  offset: number; // V
+  offset: number; // V (0-10V module) or mA (4-20mA module)
 }
 
 export const IDENTITY: Calibration = { gain: 1, offset: 0 };
@@ -39,9 +39,14 @@ export function nominalVoltage(ch: ChannelStatus): number {
 // Returns null if the points can't give a calibration (same nominal value)
 // or the result is implausible (see MAX_GAIN_ERROR/MAX_OFFSET) - almost
 // always a typo, a swapped field or a probe on the wrong terminal.
+//
+// maxOffset is the plausibility limit for the offset in the output's unit:
+// the default fits the 0-10V module (V), the 4-20mA module passes its own
+// (mA, see analogout420ma.ts).
 export function fitCalibration(
   nominal1: number, measured1: number,
   nominal2: number, measured2: number,
+  maxOffset: number = MAX_OFFSET,
 ): Calibration | null {
   if (![nominal1, measured1, nominal2, measured2].every(Number.isFinite)) {
     return null;
@@ -51,14 +56,14 @@ export function fitCalibration(
   }
   const gain = (measured2 - measured1) / (nominal2 - nominal1);
   const offset = measured1 - gain * nominal1;
-  if (!isPlausible({ gain, offset })) {
+  if (!isPlausible({ gain, offset }, maxOffset)) {
     return null;
   }
   return { gain: round(gain, 6), offset: round(offset, 5) };
 }
 
-export function isPlausible(c: Calibration): boolean {
-  return Math.abs(c.gain - 1) <= MAX_GAIN_ERROR && Math.abs(c.offset) <= MAX_OFFSET;
+export function isPlausible(c: Calibration, maxOffset: number = MAX_OFFSET): boolean {
+  return Math.abs(c.gain - 1) <= MAX_GAIN_ERROR && Math.abs(c.offset) <= maxOffset;
 }
 
 // Parses a measured value as typed by a German or English user: "1,0091"
