@@ -117,7 +117,11 @@ export default {
                 // device actually reported a (positive) reading for it.
                 current[i] = data.datasets[0].phases[i].values[j].data
               }
-              itot = itot + data.datasets[0].phases[i].values[j].data
+              // The neutral conductor (index 3) carries the return current of L1-L3
+              // and is not part of the total.
+              if (i < 3) {
+                itot = itot + data.datasets[0].phases[i].values[j].data
+              }
             } else if (data.datasets[0].phases[i].values[j].type == "energyproduced") {
               energyProduced[i] = data.datasets[0].phases[i].values[j].data
             } else if (data.datasets[0].phases[i].values[j].type == "energyconsumed") {
@@ -185,7 +189,11 @@ export default {
               } else if ((i==3) && (data.datasets[0].phases[i].values[j].data > 0.0)) {
                 current[i] = data.datasets[0].phases[i].values[j].data
               }   
-              itot = itot + data.datasets[0].phases[i].values[j].data              
+              // The neutral conductor (index 3) carries the return current of L1-L3
+              // and is not part of the total.
+              if (i < 3) {
+                itot = itot + data.datasets[0].phases[i].values[j].data
+              }
             } else if (data.datasets[0].phases[i].values[j].type == "energyproduced") {
               energyProduced[i] = data.datasets[0].phases[i].values[j].data
             } else if (data.datasets[0].phases[i].values[j].type == "energyconsumed") {
@@ -578,6 +586,11 @@ export default {
                           <td class="card-text-field ">{{ (current[0] / 1000.0).toFixed(3).replace('.',',').replace(' ', '') }} kA</td>
                           <td class="card-text-field ">{{ (current[1] / 1000.0).toFixed(3).replace('.',',').replace(' ', '') }} kA</td>
                           <td class="card-text-field ">{{ (current[2] / 1000.0).toFixed(3).replace('.',',').replace(' ', '') }} kA</td>
+                        </tr>
+
+                        <tr v-if="current[3] !== undefined">
+                          <th scope="row">N</th>
+                          <td class="card-text-field " colspan="3">{{ (current[3]).toFixed(2).replace('.',',').replace(' ', '') }} A</td>
                         </tr>
 
                         <tr>
